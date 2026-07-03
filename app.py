@@ -285,6 +285,77 @@ def render_auth_page():
                         st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
+def send_history_email(recipient_email: str, history_list: list) -> tuple[bool, str]:
+    if not history_list:
+        return False, "Prediction history is empty."
+    
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.base import MIMEBase
+    from email import encoders
+    import io
+    
+    # 1. Create CSV content from session_state history
+    df = pd.DataFrame(history_list)
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_data = csv_buffer.getvalue()
+    
+    # 2. Build email MIME multipart message
+    msg = MIMEMultipart()
+    smtp_from = st.secrets.get("smtp_from") or st.secrets.get("smtp_user") or "reports@cropsense.ai"
+    msg['From'] = smtp_from
+    msg['To'] = recipient_email
+    msg['Subject'] = "Plant Disease Prediction Report"
+    
+    user_name = st.session_state.get("user_name", "Valued Farmer")
+    body = f"""Dear {user_name},
+
+Thank you for using CropSense AI. We have compiled your plant disease prediction history report.
+
+Summary of diagnostics:
+- Total scans: {len(df)}
+- Latest diagnosis: {df.iloc[-1]['Plant']} — {df.iloc[-1]['Disease']} ({df.iloc[-1]['Severity']})
+
+Please find the full prediction history attached as a CSV file.
+
+Best regards,
+CropSense AI Team
+"""
+    msg.attach(MIMEText(body, 'plain'))
+    
+    # Attachment
+    attachment = MIMEBase('application', 'octet-stream')
+    attachment.set_payload(csv_data.encode('utf-8'))
+    encoders.encode_base64(attachment)
+    attachment.add_header('Content-Disposition', 'attachment', filename='crop_prediction_history.csv')
+    msg.attach(attachment)
+    
+    # 3. Try to send via SMTP
+    smtp_server = st.secrets.get("smtp_server")
+    smtp_port = st.secrets.get("smtp_port")
+    smtp_user = st.secrets.get("smtp_user")
+    smtp_password = st.secrets.get("smtp_password")
+    
+    if not smtp_server or not smtp_user or not smtp_password:
+        return True, "Simulation Mode: Email successfully compiled! (To enable real emails, configure your Streamlit Secrets with smtp_server, smtp_port, smtp_user, and smtp_password)."
+        
+    try:
+        port = int(smtp_port or 587)
+        if port == 465:
+            server = smtplib.SMTP_SSL(smtp_server, port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_server, port, timeout=10)
+            server.starttls()
+            
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_from, recipient_email, msg.as_string())
+        server.close()
+        return True, "Email sent successfully!"
+    except Exception as e:
+        return False, f"SMTP Error: {str(e)} (Simulation fallback: Email content generated successfully)."
+
 # ═══════════════════════════════════════════════════
 # FIX 1 — translate_text defined FIRST (before any @st.cache_data function that calls it)
 # ═══════════════════════════════════════════════════
@@ -1600,11 +1671,27 @@ if page == "📜 History":
                 ax2.set_ylabel("Confidence %",color='#9ca3af',fontsize=8)
                 ax2.set_ylim(0,105); plt.tight_layout(); st.pyplot(fig2); plt.close()
         st.markdown("<br>", unsafe_allow_html=True)
-        col_e, _ = st.columns([1,3])
+        col_e, col_spacer, col_mail = st.columns([1.5, 0.2, 4.3])
         with col_e:
             st.download_button("📥 Export CSV", data=history_df.to_csv(index=False).encode(),
                 file_name=f"cropsense_history_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv", use_container_width=True)
+        with col_mail:
+            default_email = st.session_state.get("user_email", "")
+            col_inp, col_btn = st.columns([2, 1.2])
+            with col_inp:
+                recip = st.text_input("Recipient Email", value=default_email, placeholder="Enter recipient email", label_visibility="collapsed", key="email_history_input")
+            with col_btn:
+                if st.button("✉️ Send to Email", use_container_width=True, key="send_history_email_btn"):
+                    if not recip.strip():
+                        st.error("Please enter a valid email address.")
+                    else:
+                        with st.spinner("Sending..."):
+                            success, message = send_history_email(recip.strip(), st.session_state.history)
+                            if success:
+                                st.success(message)
+                            else:
+                                st.error(message)
         
         # Sort chronologically by converting Date + Time to sorting key
         try:
