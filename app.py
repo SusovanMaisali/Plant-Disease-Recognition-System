@@ -242,12 +242,26 @@ def get_severity(confidence: float, is_healthy: bool):
     else:
         return "Mild", "#eab308", "🟡"
 
-# ═══════════════════════════════════════════════════
-# CSS (unchanged from your version)
-# ═══════════════════════════════════════════════════
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Satoshi:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Adaptive Layout Show/Hide Breakpoints */
+.device-mobile, .device-tablet, .device-laptop, .device-desktop {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  .device-mobile { display: block !important; }
+}
+@media (min-width: 601px) and (max-width: 960px) {
+  .device-tablet { display: block !important; }
+}
+@media (min-width: 961px) and (max-width: 1280px) {
+  .device-laptop { display: block !important; }
+}
+@media (min-width: 1281px) {
+  .device-desktop { display: block !important; }
+}
 :root{--cs-void:#0c130c;--cs-deep:#111b11;--cs-forest:#0f3a1f;--cs-emerald:#065f46;--cs-jade:#10b981;--cs-mint:#34d399;--cs-lime:#a3e635;--cs-amber:#fbbf24;--cs-coral:#f97316;--cs-sky:#06b6d4;--cs-white:#f0fdf4;--cs-muted:rgba(240,253,244,0.55);--cs-border:rgba(52,211,153,0.15);--cs-glass:rgba(255,255,255,0.04);--radius-sm:10px;--radius-md:16px;--radius-lg:24px;--radius-xl:32px;--shadow-glow:0 0 40px rgba(16,185,129,0.15);--transition:all 0.3s cubic-bezier(0.4,0,0.2,1);}
 *,*::before,*::after{box-sizing:border-box;}
 html,body,[class*="css"]{font-family:'Satoshi','DM Sans',sans-serif;background:var(--cs-void)!important;color:var(--cs-white);}
@@ -430,11 +444,16 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
 # ═══════════════════════════════════════════════════
 # HERO
 # ═══════════════════════════════════════════════════
+# Desktop Hero Banner (Large Screens)
 st.markdown("""
-<div class="cs-hero cs-fadein">
-  <div class="cs-hero-bg"><div class="cs-hero-grid"></div><div class="cs-hero-orb1"></div><div class="cs-hero-orb2"></div></div>
+<div class="cs-hero cs-fadein device-desktop">
+  <div class="cs-hero-bg">
+    <div class="cs-hero-grid"></div>
+    <div class="cs-hero-orb1"></div>
+    <div class="cs-hero-orb2"></div>
+  </div>
   <div class="cs-hero-content">
-    <div class="cs-hero-badge"><span class="cs-hero-badge-dot"></span>AI System Active · Gemini Vision + CNN</div>
+    <div class="cs-hero-badge"><span class="cs-hero-badge-dot"></span>AI System Active · Desktop Mode</div>
     <h1 class="cs-hero-title">Detect disease.<br><span class="accent">Save your crop.</span><br><span class="accent2">Any plant. Any disease.</span></h1>
     <p class="cs-hero-sub">Upload any leaf for instant AI-powered diagnosis. CNN for known diseases, Gemini Vision for any plant — with medicine, fertilizer, voice, PDF, and multilingual chat.</p>
   </div>
@@ -443,6 +462,56 @@ st.markdown("""
     <div class="cs-stat-pill"><span class="cs-stat-val">∞</span><span class="cs-stat-lab">Diseases</span></div>
     <div class="cs-stat-pill"><span class="cs-stat-val">70+</span><span class="cs-stat-lab">Languages</span></div>
     <div class="cs-stat-pill"><span class="cs-stat-val">&lt;5s</span><span class="cs-stat-lab">Analysis</span></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Laptop Hero Banner (Medium-Large Screens)
+st.markdown("""
+<div class="cs-hero cs-fadein device-laptop" style="padding: 40px; background: linear-gradient(135deg, #020d08 0%, #051a0e 100%);">
+  <div class="cs-hero-bg">
+    <div class="cs-hero-grid"></div>
+  </div>
+  <div class="cs-hero-content">
+    <div class="cs-hero-badge" style="background: rgba(52,211,153,0.08);"><span class="cs-hero-badge-dot"></span>AI System Active · Laptop Mode</div>
+    <h1 class="cs-hero-title" style="font-size: 38px;">Detect disease.<br><span class="accent">Save your crop.</span></h1>
+    <p class="cs-hero-sub" style="font-size: 13px; max-width: 440px;">Upload any leaf for instant AI-powered diagnosis. CNN for known diseases, Gemini Vision for any plant.</p>
+  </div>
+  <div class="cs-hero-stats" style="right: 40px;">
+    <div class="cs-stat-pill"><span class="cs-stat-val">Any</span><span class="cs-stat-lab">Plant</span></div>
+    <div class="cs-stat-pill"><span class="cs-stat-val">∞</span><span class="cs-stat-lab">Diseases</span></div>
+    <div class="cs-stat-pill"><span class="cs-stat-val">70+</span><span class="cs-stat-lab">Languages</span></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Tablet Hero Banner (Medium Screens)
+st.markdown("""
+<div class="cs-hero cs-fadein device-tablet" style="padding: 32px; background: #051a0e; min-height: auto;">
+  <div class="cs-hero-content">
+    <div class="cs-hero-badge"><span class="cs-hero-badge-dot"></span>AI System Active · Tablet Mode</div>
+    <h1 class="cs-hero-title" style="font-size: 32px; margin-bottom: 8px;">Detect disease. Save your crop.</h1>
+    <p class="cs-hero-sub" style="font-size: 12px; max-width: 100%; margin-bottom: 20px;">AI-powered diagnosis for any plant disease. CNN classification + Gemini diagnostics.</p>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+      <div class="cs-stat-pill" style="flex: 1; min-width: auto;"><span class="cs-stat-val" style="font-size: 18px;">Any</span><span class="cs-stat-lab">Plant</span></div>
+      <div class="cs-stat-pill" style="flex: 1; min-width: auto;"><span class="cs-stat-val" style="font-size: 18px;">∞</span><span class="cs-stat-lab">Diseases</span></div>
+      <div class="cs-stat-pill" style="flex: 1; min-width: auto;"><span class="cs-stat-val" style="font-size: 18px;">70+</span><span class="cs-stat-lab">Languages</span></div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Mobile Hero Banner (Small Screens)
+st.markdown("""
+<div class="cs-hero cs-fadein device-mobile" style="padding: 24px 16px; background: #020d08; min-height: auto; border-radius: 0 0 16px 16px; text-align: center;">
+  <div class="cs-hero-content">
+    <div class="cs-hero-badge" style="margin: 0 auto 12px;"><span class="cs-hero-badge-dot"></span>AI System Active · Mobile</div>
+    <h1 class="cs-hero-title" style="font-size: 24px; margin-bottom: 6px; line-height: 1.2;">Detect disease.<br><span class="accent" style="color: var(--cs-mint);">Save your crop.</span></h1>
+    <p class="cs-hero-sub" style="font-size: 11px; max-width: 100%; line-height: 1.5; color: var(--cs-muted);">Upload a leaf photo for instant diagnosis & treatment advice.</p>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 16px;">
+      <div class="cs-stat-pill" style="padding: 8px; min-width: auto;"><span class="cs-stat-val" style="font-size: 16px;">Any</span><span class="cs-stat-lab" style="font-size: 8px;">Plant</span></div>
+      <div class="cs-stat-pill" style="padding: 8px; min-width: auto;"><span class="cs-stat-val" style="font-size: 16px;">∞</span><span class="cs-stat-lab" style="font-size: 8px;">Diseases</span></div>
+    </div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1027,17 +1096,50 @@ if page == "🏠 Home":
         # ── TREATMENT SUMMARY ──
         if dis or gd:
             st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon rose">🩺</div><div><p class="cs-section-title">Diagnosis & Treatment Summary</p><p class="cs-section-sub">Powered by Gemini Vision · Translated to your language</p></div></div>""", unsafe_allow_html=True)
-            p1, p2, p3, p4 = st.columns(4, gap="small")
             pathogen = gd.get("disease_pathogen","N/A") if gd and "error" not in gd else "N/A"
-            for col_w, (label, tag, color, text, big) in zip([p1,p2,p3,p4],[
-                ("📝 Description","tag-desc","#22d3ee",desc,False),
-                ("💊 Treatment","tag-treat","#10b981",treat,False),
-                ("🌿 Prevention","tag-fert","#fbbf24",prev,False),
-                ("🦠 Pathogen","tag-med","#fb923c",pathogen,True),
-            ]):
-                with col_w:
-                    text_html = f'<p class="cs-info-big">{text}</p>' if big else f'<p class="cs-info-body">{text}</p>'
-                    st.markdown(f'<div class="cs-info cs-fadein"><div class="cs-info-accent" style="background:{color};"></div><span class="cs-info-tag {tag}">{label}</span>{text_html}</div>', unsafe_allow_html=True)
+            
+            # Escape HTML characters to prevent markdown/layout injection
+            s_desc = html.escape(desc)
+            s_treat = html.escape(treat)
+            s_prev = html.escape(prevention)
+            s_pathogen = html.escape(pathogen)
+            
+            summary_html = f"""
+            <!-- Desktop Layout (4 Columns) -->
+            <div class="device-desktop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+            </div>
+            
+            <!-- Laptop Layout (3 Columns + 1 Row) -->
+            <div class="device-laptop">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+                <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+                <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+              </div>
+              <div class="cs-info" style="width: 100%;"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+            </div>
+
+            <!-- Tablet Layout (2x2 Grid) -->
+            <div class="device-tablet" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+            </div>
+
+            <!-- Mobile Layout (Vertical Stack) -->
+            <div class="device-mobile" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body" style="font-size:12px;">{s_desc}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body" style="font-size:12px;">{s_treat}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body" style="font-size:12px;">{s_prev}</p></div>
+              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big" style="font-size:14px;">{s_pathogen}</p></div>
+            </div>
+            """
+            st.markdown(summary_html, unsafe_allow_html=True)
 
         # ── MEDICINE DETAIL ──
         if gd and "medicine" in gd and "error" not in gd:
