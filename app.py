@@ -588,6 +588,84 @@ def check_repeat_alert(history_df: pd.DataFrame, disease: str, window: int = 5):
         return f"'{disease}' detected {count}× in last {window} diagnoses. Consider consulting an agronomist."
     return None
 
+def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    if not os.path.exists(csv_path):
+        pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]).to_csv(csv_path, index=False)
+    try:
+        history_df = pd.read_csv(csv_path)
+    except Exception:
+        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
+    
+    if history_df.empty:
+        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
+        return history_df
+
+    # Standardize column names if needed
+    rename_cols = {}
+    if "Confidence" in history_df.columns and "CNN_Confidence" not in history_df.columns:
+        rename_cols["Confidence"] = "CNN_Confidence"
+    if rename_cols:
+        history_df.rename(columns=rename_cols, inplace=True)
+        
+    # Ensure all required columns exist
+    for col in ["Date", "Plant", "Disease", "CNN_Confidence", "Severity"]:
+        if col not in history_df.columns:
+            history_df[col] = ""
+
+    # Migrate older Date formats to separate Date and Time
+    if "Time" not in history_df.columns:
+        times = []
+        dates = []
+        for _, row in history_df.iterrows():
+            dt_str = str(row.get("Date", ""))
+            if " " in dt_str:
+                try:
+                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M")
+                    dates.append(dt.strftime("%d-%m-%Y"))
+                    times.append(dt.strftime("%H:%M:%S"))
+                except ValueError:
+                    try:
+                        dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M:%S")
+                        dates.append(dt.strftime("%d-%m-%Y"))
+                        times.append(dt.strftime("%H:%M:%S"))
+                    except ValueError:
+                        try:
+                            parts = dt_str.split(' ')
+                            dt_val = datetime.strptime(parts[0], "%Y-%m-%d")
+                            dates.append(dt_val.strftime("%d-%m-%Y"))
+                            times.append(parts[1] if len(parts) > 1 else "00:00:00")
+                        except ValueError:
+                            dates.append(dt_str)
+                            times.append("00:00:00")
+            else:
+                try:
+                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d")
+                    dates.append(dt.strftime("%d-%m-%Y"))
+                    times.append("00:00:00")
+                except ValueError:
+                    try:
+                        # Check if it is already in DD-MM-YYYY format
+                        dt = datetime.strptime(dt_str.strip(), "%d-%m-%Y")
+                        dates.append(dt.strftime("%d-%m-%Y"))
+                        times.append("00:00:00")
+                    except ValueError:
+                        dates.append(dt_str)
+                        times.append("00:00:00")
+        
+        history_df["Date"] = dates
+        history_df.insert(1, "Time", times)
+        history_df.to_csv(csv_path, index=False)
+        
+    cols_order = ["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]
+    history_df = history_df[[c for c in cols_order if c in history_df.columns]]
+    return history_df
+
+# Global initialization of history in session state
+csv_path = "history/predictions.csv"
+if "history" not in st.session_state:
+    st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
+
 def generate_gradcam(model, img_array, class_idx):
     try:
         last_conv = next(
@@ -1004,20 +1082,23 @@ if page == "🏠 Home":
                 st.session_state.img_np = img_np  # numpy arrays can't be serialised but fine within session
 
                 # Save to history
-                os.makedirs("history", exist_ok=True)
                 csv_path = "history/predictions.csv"
-                if not os.path.exists(csv_path):
-                    pd.DataFrame(columns=["Date","Plant","Disease","CNN_Confidence","Severity"]).to_csv(csv_path, index=False)
-                history_df = pd.read_csv(csv_path)
+                history_df = pd.DataFrame(st.session_state.history)
                 alert_msg = check_repeat_alert(history_df, final_disease)
                 if alert_msg:
                     st.markdown(f'<div class="cs-alert-banner">🔁 {alert_msg}</div>', unsafe_allow_html=True)
                 if image_changed:  # only log new images, not reruns
-                    new_row = pd.DataFrame({"Date":[datetime.now().strftime("%Y-%m-%d %H:%M")],
-                                            "Plant":[plant_name],"Disease":[final_disease],
-                                            "CNN_Confidence":[round(cnn_confidence,1)],
-                                            "Severity":[severity_label]})
-                    pd.concat([history_df, new_row], ignore_index=True).to_csv(csv_path, index=False)
+                    new_entry = {
+                        "Date": datetime.now().strftime("%d-%m-%Y"),
+                        "Time": datetime.now().strftime("%H:%M:%S"),
+                        "Plant": plant_name,
+                        "Disease": final_disease,
+                        "CNN_Confidence": round(cnn_confidence, 1),
+                        "Severity": severity_label
+                    }
+                    st.session_state.history.append(new_entry)
+                    # Write updated history back to CSV
+                    pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
 
                 # ── GEMINI IDENTIFICATION CARD ──
                 if gemini_data and "error" not in gemini_data:
@@ -1284,57 +1365,61 @@ if page == "🏠 Home":
 # ═══════════════════════════════════════════════════
 if page == "📜 History":
     st.markdown("""<div class="cs-section cs-fadein"><div class="cs-section-icon sky">📜</div><div><p class="cs-section-title">Prediction History & Analytics</p><p class="cs-section-sub">All diagnoses with plant identification, timestamp, and confidence</p></div></div>""", unsafe_allow_html=True)
-    csv_path = "history/predictions.csv"
-    if os.path.exists(csv_path):
-        history_df = pd.read_csv(csv_path)
-        if len(history_df) > 0:
-            disease_col = "Disease" if "Disease" in history_df.columns else history_df.columns[1]
-            conf_col    = next((c for c in ["CNN_Confidence","Confidence"] if c in history_df.columns), None)
-            healthy_pct = round(len(history_df[history_df[disease_col].str.contains("healthy|Healthy",na=False)])/len(history_df)*100)
-            avg_conf    = f"{history_df[conf_col].mean():.1f}%" if conf_col else "N/A"
-            m1,m2,m3,m4 = st.columns(4)
-            for col_m,(label,val) in zip([m1,m2,m3,m4],[("Total Diagnoses",str(len(history_df))),("Avg Confidence",avg_conf),("Unique Diseases",str(history_df[disease_col].nunique())),("Healthy Rate",f"{healthy_pct}%")]):
-                with col_m:
-                    st.markdown(f'<div class="cs-metric cs-fadein"><span class="cs-metric-val">{val}</span><span class="cs-metric-lab">{label}</span></div>', unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            ch1, ch2 = st.columns(2, gap="large")
-            with ch1:
-                st.markdown("""<div class="cs-section" style="margin-top:0;"><div class="cs-section-icon amber">📊</div><div><p class="cs-section-title">Disease Frequency</p></div></div>""", unsafe_allow_html=True)
-                top_diseases = history_df[disease_col].value_counts().head(8)
-                fig, ax = plt.subplots(figsize=(6,3.5))
-                fig.patch.set_facecolor('#0c130c'); ax.set_facecolor('#111b11')
-                ax.barh([d[:28] for d in top_diseases.index], top_diseases.values,
-                         color=['#10b981' if 'healthy' in d.lower() else '#f97316' for d in top_diseases.index],
-                         edgecolor='none', height=0.65)
-                ax.tick_params(colors='#9ca3af',labelsize=8)
-                for sp in ax.spines.values(): sp.set_color('#1f2937')
-                ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
-                ax.set_xlabel("Count",color='#9ca3af',fontsize=8); ax.invert_yaxis()
-                plt.tight_layout(); st.pyplot(fig); plt.close()
-            with ch2:
-                if conf_col:
-                    st.markdown("""<div class="cs-section" style="margin-top:0;"><div class="cs-section-icon green">📈</div><div><p class="cs-section-title">Confidence Trend</p></div></div>""", unsafe_allow_html=True)
-                    fig2, ax2 = plt.subplots(figsize=(6,3.5))
-                    fig2.patch.set_facecolor('#0c130c'); ax2.set_facecolor('#111b11')
-                    confs = history_df[conf_col].tail(20).values
-                    ax2.plot(confs,color='#34d399',linewidth=2,marker='o',markersize=4,markerfacecolor='#10b981')
-                    ax2.fill_between(range(len(confs)),confs,alpha=0.15,color='#10b981')
-                    ax2.axhline(y=confs.mean(),color='#f59e0b',linewidth=1,linestyle='--',alpha=0.6)
-                    ax2.tick_params(colors='#9ca3af',labelsize=8)
-                    for sp in ax2.spines.values(): sp.set_color('#1f2937')
-                    ax2.spines['top'].set_visible(False); ax2.spines['right'].set_visible(False)
-                    ax2.set_ylabel("Confidence %",color='#9ca3af',fontsize=8)
-                    ax2.set_ylim(0,105); plt.tight_layout(); st.pyplot(fig2); plt.close()
-            st.markdown("<br>", unsafe_allow_html=True)
-            col_e, _ = st.columns([1,3])
-            with col_e:
-                st.download_button("📥 Export CSV", data=history_df.to_csv(index=False).encode(),
-                    file_name=f"cropsense_history_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv", use_container_width=True)
-            st.dataframe(history_df.sort_values("Date",ascending=False), use_container_width=True, hide_index=True)
-        else:
-            st.markdown('<div class="cs-empty"><div class="cs-empty-icon">📋</div><div class="cs-empty-title">No history yet</div></div>', unsafe_allow_html=True)
+    history_df = pd.DataFrame(st.session_state.history)
+    if len(history_df) > 0:
+        disease_col = "Disease" if "Disease" in history_df.columns else history_df.columns[1]
+        conf_col    = next((c for c in ["CNN_Confidence","Confidence"] if c in history_df.columns), None)
+        healthy_pct = round(len(history_df[history_df[disease_col].str.contains("healthy|Healthy",na=False)])/len(history_df)*100)
+        avg_conf    = f"{history_df[conf_col].mean():.1f}%" if conf_col else "N/A"
+        m1,m2,m3,m4 = st.columns(4)
+        for col_m,(label,val) in zip([m1,m2,m3,m4],[("Total Diagnoses",str(len(history_df))),("Avg Confidence",avg_conf),("Unique Diseases",str(history_df[disease_col].nunique())),("Healthy Rate",f"{healthy_pct}%")]):
+            with col_m:
+                st.markdown(f'<div class="cs-metric cs-fadein"><span class="cs-metric-val">{val}</span><span class="cs-metric-lab">{label}</span></div>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        ch1, ch2 = st.columns(2, gap="large")
+        with ch1:
+            st.markdown("""<div class="cs-section" style="margin-top:0;"><div class="cs-section-icon amber">📊</div><div><p class="cs-section-title">Disease Frequency</p></div></div>""", unsafe_allow_html=True)
+            top_diseases = history_df[disease_col].value_counts().head(8)
+            fig, ax = plt.subplots(figsize=(6,3.5))
+            fig.patch.set_facecolor('#0c130c'); ax.set_facecolor('#111b11')
+            ax.barh([d[:28] for d in top_diseases.index], top_diseases.values,
+                     color=['#10b981' if 'healthy' in d.lower() else '#f97316' for d in top_diseases.index],
+                     edgecolor='none', height=0.65)
+            ax.tick_params(colors='#9ca3af',labelsize=8)
+            for sp in ax.spines.values(): sp.set_color('#1f2937')
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+            ax.set_xlabel("Count",color='#9ca3af',fontsize=8); ax.invert_yaxis()
+            plt.tight_layout(); st.pyplot(fig); plt.close()
+        with ch2:
+            if conf_col:
+                st.markdown("""<div class="cs-section" style="margin-top:0;"><div class="cs-section-icon green">📈</div><div><p class="cs-section-title">Confidence Trend</p></div></div>""", unsafe_allow_html=True)
+                fig2, ax2 = plt.subplots(figsize=(6,3.5))
+                fig2.patch.set_facecolor('#0c130c'); ax2.set_facecolor('#111b11')
+                confs = history_df[conf_col].tail(20).values
+                ax2.plot(confs,color='#34d399',linewidth=2,marker='o',markersize=4,markerfacecolor='#10b981')
+                ax2.fill_between(range(len(confs)),confs,alpha=0.15,color='#10b981')
+                ax2.axhline(y=confs.mean(),color='#f59e0b',linewidth=1,linestyle='--',alpha=0.6)
+                ax2.tick_params(colors='#9ca3af',labelsize=8)
+                for sp in ax2.spines.values(): sp.set_color('#1f2937')
+                ax2.spines['top'].set_visible(False); ax2.spines['right'].set_visible(False)
+                ax2.set_ylabel("Confidence %",color='#9ca3af',fontsize=8)
+                ax2.set_ylim(0,105); plt.tight_layout(); st.pyplot(fig2); plt.close()
+        st.markdown("<br>", unsafe_allow_html=True)
+        col_e, _ = st.columns([1,3])
+        with col_e:
+            st.download_button("📥 Export CSV", data=history_df.to_csv(index=False).encode(),
+                file_name=f"cropsense_history_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv", use_container_width=True)
+        
+        # Sort chronologically by converting Date + Time to sorting key
+        try:
+            temp_dt = pd.to_datetime(history_df["Date"] + " " + history_df["Time"], format="%d-%m-%Y %H:%M:%S")
+            sorted_df = history_df.iloc[temp_dt.argsort()[::-1]]
+        except Exception:
+            sorted_df = history_df.iloc[::-1]
+            
+        st.dataframe(sorted_df, use_container_width=True, hide_index=True)
     else:
-        st.markdown('<div class="cs-empty"><div class="cs-empty-icon">📋</div><div class="cs-empty-title">No history found</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="cs-empty"><div class="cs-empty-icon">📋</div><div class="cs-empty-title">No history yet</div></div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="cs-footer cs-fadein"><div class="cs-footer-logo">🌿 CropSense AI v3.0 Pro</div><div class="cs-footer-sub">TensorFlow · Gemini Vision · OpenCV · Grad-CAM · ReportLab · Streamlit · Empowering farmers worldwide</div></div>""", unsafe_allow_html=True)
