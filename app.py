@@ -58,9 +58,19 @@ if "logged_in" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+if "captcha_num1" not in st.session_state:
+    import random
+    st.session_state.captcha_num1 = random.randint(1, 20)
+    st.session_state.captcha_num2 = random.randint(1, 20)
+
 # ═══════════════════════════════════════════════════
 # USER AUTHENTICATION & DATABASE HELPERS
 # ═══════════════════════════════════════════════════
+def regenerate_captcha():
+    import random
+    st.session_state.captcha_num1 = random.randint(1, 20)
+    st.session_state.captcha_num2 = random.randint(1, 20)
+
 def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     if not os.path.exists(csv_path):
@@ -170,8 +180,18 @@ def render_auth_page():
             mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="login_mobile_input")
             
             if not st.session_state.login_otp_sent:
+                captcha_val = st.text_input(f"CAPTCHA: What is {st.session_state.captcha_num1} + {st.session_state.captcha_num2}?", placeholder="Enter correct sum", key="login_captcha_input")
                 if st.button("Request OTP Code", use_container_width=True, key="req_otp_btn"):
-                    if not mobile.strip():
+                    try:
+                        is_correct = int(captcha_val.strip()) == (st.session_state.captcha_num1 + st.session_state.captcha_num2)
+                    except ValueError:
+                        is_correct = False
+                    
+                    if not is_correct:
+                        st.error("Incorrect CAPTCHA answer. Please try again.")
+                        regenerate_captcha()
+                        st.rerun()
+                    elif not mobile.strip():
                         st.error("Please enter a valid mobile number")
                     else:
                         users = load_users()
@@ -225,9 +245,19 @@ def render_auth_page():
             name = st.text_input("Full Name", placeholder="e.g. John Doe", key="signup_name")
             signup_mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="signup_mobile")
             email = st.text_input("Email Address", placeholder="e.g. john@example.com", key="signup_email")
+            signup_captcha_val = st.text_input(f"CAPTCHA: What is {st.session_state.captcha_num1} + {st.session_state.captcha_num2}?", placeholder="Enter correct sum", key="signup_captcha_input")
             
             if st.button("Register & Login", use_container_width=True, key="register_btn"):
-                if not name.strip() or not signup_mobile.strip() or not email.strip():
+                try:
+                    is_correct = int(signup_captcha_val.strip()) == (st.session_state.captcha_num1 + st.session_state.captcha_num2)
+                except ValueError:
+                    is_correct = False
+                    
+                if not is_correct:
+                    st.error("Incorrect CAPTCHA answer. Please try again.")
+                    regenerate_captcha()
+                    st.rerun()
+                elif not name.strip() or not signup_mobile.strip() or not email.strip():
                     st.error("Please fill in all registration fields.")
                 else:
                     users = load_users()
