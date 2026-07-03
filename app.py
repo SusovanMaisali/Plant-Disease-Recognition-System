@@ -59,6 +59,203 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # ═══════════════════════════════════════════════════
+# USER AUTHENTICATION & DATABASE HELPERS
+# ═══════════════════════════════════════════════════
+def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    if not os.path.exists(csv_path):
+        pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]).to_csv(csv_path, index=False)
+    try:
+        history_df = pd.read_csv(csv_path)
+    except Exception:
+        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
+    
+    if history_df.empty:
+        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
+        return history_df
+
+    # Standardize column names if needed
+    rename_cols = {}
+    if "Confidence" in history_df.columns and "CNN_Confidence" not in history_df.columns:
+        rename_cols["Confidence"] = "CNN_Confidence"
+    if rename_cols:
+        history_df.rename(columns=rename_cols, inplace=True)
+        
+    # Ensure all required columns exist
+    for col in ["Date", "Plant", "Disease", "CNN_Confidence", "Severity"]:
+        if col not in history_df.columns:
+            history_df[col] = ""
+
+    # Migrate older Date formats to separate Date and Time
+    if "Time" not in history_df.columns:
+        times = []
+        dates = []
+        for _, row in history_df.iterrows():
+            dt_str = str(row.get("Date", ""))
+            if " " in dt_str:
+                try:
+                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M")
+                    dates.append(dt.strftime("%d-%m-%Y"))
+                    times.append(dt.strftime("%H:%M:%S"))
+                except ValueError:
+                    try:
+                        dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M:%S")
+                        dates.append(dt.strftime("%d-%m-%Y"))
+                        times.append(dt.strftime("%H:%M:%S"))
+                    except ValueError:
+                        try:
+                            parts = dt_str.split(' ')
+                            dt_val = datetime.strptime(parts[0], "%Y-%m-%d")
+                            dates.append(dt_val.strftime("%d-%m-%Y"))
+                            times.append(parts[1] if len(parts) > 1 else "00:00:00")
+                        except ValueError:
+                            dates.append(dt_str)
+                            times.append("00:00:00")
+            else:
+                try:
+                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d")
+                    dates.append(dt.strftime("%d-%m-%Y"))
+                    times.append("00:00:00")
+                except ValueError:
+                    try:
+                        # Check if it is already in DD-MM-YYYY format
+                        dt = datetime.strptime(dt_str.strip(), "%d-%m-%Y")
+                        dates.append(dt.strftime("%d-%m-%Y"))
+                        times.append("00:00:00")
+                    except ValueError:
+                        dates.append(dt_str)
+                        times.append("00:00:00")
+        
+        history_df["Date"] = dates
+        history_df.insert(1, "Time", times)
+        history_df.to_csv(csv_path, index=False)
+        
+    cols_order = ["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]
+    history_df = history_df[[c for c in cols_order if c in history_df.columns]]
+    return history_df
+
+def load_users() -> dict:
+    os.makedirs("history", exist_ok=True)
+    users_file = "history/users.json"
+    if not os.path.exists(users_file):
+        with open(users_file, "w") as f:
+            json.dump({}, f)
+    try:
+        with open(users_file, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_users(users: dict):
+    os.makedirs("history", exist_ok=True)
+    users_file = "history/users.json"
+    with open(users_file, "w") as f:
+        json.dump(users, f, indent=4)
+
+def render_auth_page():
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 24px; margin-top: 32px;" class="cs-fadein">
+        <h1 style="font-family:'Clash Display',sans-serif; font-size:clamp(32px, 5vw, 48px); color:var(--cs-white); margin-bottom: 8px;">🌿 CropSense AI</h1>
+        <p style="color:var(--cs-mint); font-size:16px; font-family:'Satoshi',sans-serif; max-width:550px; margin: 0 auto;">Intelligent Crop Disease Detection & Farm Management Dashboard</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_l, col_c, col_r = st.columns([1, 1.5, 1])
+    with col_c:
+        st.markdown('<div class="cs-card cs-fadein">', unsafe_allow_html=True)
+        tab_login, tab_signup = st.tabs(["🔑 Sign In", "📝 Create Account"])
+        
+        with tab_login:
+            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+            mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="login_mobile_input")
+            
+            if not st.session_state.login_otp_sent:
+                if st.button("Request OTP Code", use_container_width=True, key="req_otp_btn"):
+                    if not mobile.strip():
+                        st.error("Please enter a valid mobile number")
+                    else:
+                        users = load_users()
+                        if mobile.strip() in users:
+                            import random
+                            otp = f"{random.randint(1000, 9999)}"
+                            st.session_state.login_otp = otp
+                            st.session_state.login_otp_sent = True
+                            st.session_state.temp_mobile = mobile.strip()
+                            st.rerun()
+                        else:
+                            st.error("Mobile number is not registered. Please sign up first.")
+            else:
+                st.info(f"🔑 Demo OTP sent to {st.session_state.temp_mobile}: **{st.session_state.login_otp}**")
+                otp_input = st.text_input("Enter 4-digit OTP", placeholder="Enter OTP code", key="login_otp_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Verify & Login", use_container_width=True, key="verify_btn"):
+                        if otp_input.strip() == st.session_state.login_otp:
+                            users = load_users()
+                            user_data = users[st.session_state.temp_mobile]
+                            
+                            st.session_state.logged_in = True
+                            st.session_state.user_name = user_data["name"]
+                            st.session_state.user_mobile = user_data["mobile"]
+                            st.session_state.user_email = user_data["email"]
+                            
+                            # Load user-specific history
+                            csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
+                            st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
+                            
+                            # Reset OTP state
+                            st.session_state.login_otp_sent = False
+                            st.session_state.login_otp = ""
+                            st.session_state.temp_mobile = ""
+                            
+                            st.success("Login successful!")
+                            st.rerun()
+                        else:
+                            st.error("Invalid OTP code. Please try again.")
+                with col2:
+                    if st.button("Cancel", use_container_width=True, key="cancel_otp_btn"):
+                        st.session_state.login_otp_sent = False
+                        st.session_state.login_otp = ""
+                        st.session_state.temp_mobile = ""
+                        st.rerun()
+                        
+        with tab_signup:
+            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+            name = st.text_input("Full Name", placeholder="e.g. John Doe", key="signup_name")
+            signup_mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="signup_mobile")
+            email = st.text_input("Email Address", placeholder="e.g. john@example.com", key="signup_email")
+            
+            if st.button("Register & Login", use_container_width=True, key="register_btn"):
+                if not name.strip() or not signup_mobile.strip() or not email.strip():
+                    st.error("Please fill in all registration fields.")
+                else:
+                    users = load_users()
+                    if signup_mobile.strip() in users:
+                        st.error("This mobile number is already registered. Please login instead.")
+                    else:
+                        users[signup_mobile.strip()] = {
+                            "name": name.strip(),
+                            "mobile": signup_mobile.strip(),
+                            "email": email.strip()
+                        }
+                        save_users(users)
+                        
+                        # Automatically login the user
+                        st.session_state.logged_in = True
+                        st.session_state.user_name = name.strip()
+                        st.session_state.user_mobile = signup_mobile.strip()
+                        st.session_state.user_email = email.strip()
+                        
+                        # Load user-specific history
+                        csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
+                        st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
+                        
+                        st.success("Account created and logged in successfully!")
+                        st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════
 # FIX 1 — translate_text defined FIRST (before any @st.cache_data function that calls it)
 # ═══════════════════════════════════════════════════
 def translate_text(text: str, code: str) -> str:
@@ -621,199 +818,7 @@ def check_repeat_alert(history_df: pd.DataFrame, disease: str, window: int = 5):
         return f"'{disease}' detected {count}× in last {window} diagnoses. Consider consulting an agronomist."
     return None
 
-def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
-    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-    if not os.path.exists(csv_path):
-        pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]).to_csv(csv_path, index=False)
-    try:
-        history_df = pd.read_csv(csv_path)
-    except Exception:
-        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
-    
-    if history_df.empty:
-        history_df = pd.DataFrame(columns=["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"])
-        return history_df
 
-    # Standardize column names if needed
-    rename_cols = {}
-    if "Confidence" in history_df.columns and "CNN_Confidence" not in history_df.columns:
-        rename_cols["Confidence"] = "CNN_Confidence"
-    if rename_cols:
-        history_df.rename(columns=rename_cols, inplace=True)
-        
-    # Ensure all required columns exist
-    for col in ["Date", "Plant", "Disease", "CNN_Confidence", "Severity"]:
-        if col not in history_df.columns:
-            history_df[col] = ""
-
-    # Migrate older Date formats to separate Date and Time
-    if "Time" not in history_df.columns:
-        times = []
-        dates = []
-        for _, row in history_df.iterrows():
-            dt_str = str(row.get("Date", ""))
-            if " " in dt_str:
-                try:
-                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M")
-                    dates.append(dt.strftime("%d-%m-%Y"))
-                    times.append(dt.strftime("%H:%M:%S"))
-                except ValueError:
-                    try:
-                        dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d %H:%M:%S")
-                        dates.append(dt.strftime("%d-%m-%Y"))
-                        times.append(dt.strftime("%H:%M:%S"))
-                    except ValueError:
-                        try:
-                            parts = dt_str.split(' ')
-                            dt_val = datetime.strptime(parts[0], "%Y-%m-%d")
-                            dates.append(dt_val.strftime("%d-%m-%Y"))
-                            times.append(parts[1] if len(parts) > 1 else "00:00:00")
-                        except ValueError:
-                            dates.append(dt_str)
-                            times.append("00:00:00")
-            else:
-                try:
-                    dt = datetime.strptime(dt_str.strip(), "%Y-%m-%d")
-                    dates.append(dt.strftime("%d-%m-%Y"))
-                    times.append("00:00:00")
-                except ValueError:
-                    try:
-                        # Check if it is already in DD-MM-YYYY format
-                        dt = datetime.strptime(dt_str.strip(), "%d-%m-%Y")
-                        dates.append(dt.strftime("%d-%m-%Y"))
-                        times.append("00:00:00")
-                    except ValueError:
-                        dates.append(dt_str)
-                        times.append("00:00:00")
-        
-        history_df["Date"] = dates
-        history_df.insert(1, "Time", times)
-        history_df.to_csv(csv_path, index=False)
-        
-    cols_order = ["Date", "Time", "Plant", "Disease", "CNN_Confidence", "Severity"]
-    history_df = history_df[[c for c in cols_order if c in history_df.columns]]
-    return history_df
-
-def load_users() -> dict:
-    os.makedirs("history", exist_ok=True)
-    users_file = "history/users.json"
-    if not os.path.exists(users_file):
-        with open(users_file, "w") as f:
-            json.dump({}, f)
-    try:
-        with open(users_file, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def save_users(users: dict):
-    os.makedirs("history", exist_ok=True)
-    users_file = "history/users.json"
-    with open(users_file, "w") as f:
-        json.dump(users, f, indent=4)
-
-def render_auth_page():
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 24px; margin-top: 32px;" class="cs-fadein">
-        <h1 style="font-family:'Clash Display',sans-serif; font-size:clamp(32px, 5vw, 48px); color:var(--cs-white); margin-bottom: 8px;">🌿 CropSense AI</h1>
-        <p style="color:var(--cs-mint); font-size:16px; font-family:'Satoshi',sans-serif; max-width:550px; margin: 0 auto;">Intelligent Crop Disease Detection & Farm Management Dashboard</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_l, col_c, col_r = st.columns([1, 1.5, 1])
-    with col_c:
-        st.markdown('<div class="cs-card cs-fadein">', unsafe_allow_html=True)
-        tab_login, tab_signup = st.tabs(["🔑 Sign In", "📝 Create Account"])
-        
-        with tab_login:
-            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
-            mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="login_mobile_input")
-            
-            if not st.session_state.login_otp_sent:
-                if st.button("Request OTP Code", use_container_width=True, key="req_otp_btn"):
-                    if not mobile.strip():
-                        st.error("Please enter a valid mobile number")
-                    else:
-                        users = load_users()
-                        if mobile.strip() in users:
-                            import random
-                            otp = f"{random.randint(1000, 9999)}"
-                            st.session_state.login_otp = otp
-                            st.session_state.login_otp_sent = True
-                            st.session_state.temp_mobile = mobile.strip()
-                            st.rerun()
-                        else:
-                            st.error("Mobile number is not registered. Please sign up first.")
-            else:
-                st.info(f"🔑 Demo OTP sent to {st.session_state.temp_mobile}: **{st.session_state.login_otp}**")
-                otp_input = st.text_input("Enter 4-digit OTP", placeholder="Enter OTP code", key="login_otp_input")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Verify & Login", use_container_width=True, key="verify_btn"):
-                        if otp_input.strip() == st.session_state.login_otp:
-                            users = load_users()
-                            user_data = users[st.session_state.temp_mobile]
-                            
-                            st.session_state.logged_in = True
-                            st.session_state.user_name = user_data["name"]
-                            st.session_state.user_mobile = user_data["mobile"]
-                            st.session_state.user_email = user_data["email"]
-                            
-                            # Load user-specific history
-                            csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
-                            st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
-                            
-                            # Reset OTP state
-                            st.session_state.login_otp_sent = False
-                            st.session_state.login_otp = ""
-                            st.session_state.temp_mobile = ""
-                            
-                            st.success("Login successful!")
-                            st.rerun()
-                        else:
-                            st.error("Invalid OTP code. Please try again.")
-                with col2:
-                    if st.button("Cancel", use_container_width=True, key="cancel_otp_btn"):
-                        st.session_state.login_otp_sent = False
-                        st.session_state.login_otp = ""
-                        st.session_state.temp_mobile = ""
-                        st.rerun()
-                        
-        with tab_signup:
-            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
-            name = st.text_input("Full Name", placeholder="e.g. John Doe", key="signup_name")
-            signup_mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="signup_mobile")
-            email = st.text_input("Email Address", placeholder="e.g. john@example.com", key="signup_email")
-            
-            if st.button("Register & Login", use_container_width=True, key="register_btn"):
-                if not name.strip() or not signup_mobile.strip() or not email.strip():
-                    st.error("Please fill in all registration fields.")
-                else:
-                    users = load_users()
-                    if signup_mobile.strip() in users:
-                        st.error("This mobile number is already registered. Please login instead.")
-                    else:
-                        users[signup_mobile.strip()] = {
-                            "name": name.strip(),
-                            "mobile": signup_mobile.strip(),
-                            "email": email.strip()
-                        }
-                        save_users(users)
-                        
-                        # Automatically login the user
-                        st.session_state.logged_in = True
-                        st.session_state.user_name = name.strip()
-                        st.session_state.user_mobile = signup_mobile.strip()
-                        st.session_state.user_email = email.strip()
-                        
-                        # Load user-specific history
-                        csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
-                        st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
-                        
-                        st.success("Account created and logged in successfully!")
-                        st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.logged_in and not st.session_state.history:
     csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
