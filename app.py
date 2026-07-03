@@ -527,17 +527,22 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 page = st.sidebar.radio("Navigate", ["🏠 Home", "📘 About", "📜 History"], label_visibility="collapsed")
-st.sidebar.markdown('<div class="cs-divider"></div>', unsafe_allow_html=True)
-language_label = st.sidebar.selectbox("🌍 Translate Output To", list(WORLD_LANGUAGES.keys()), index=0)
-lang_code = WORLD_LANGUAGES[language_label]
-st.sidebar.markdown('<div class="cs-divider"></div>', unsafe_allow_html=True)
-st.sidebar.markdown('<p style="font-size:11px;color:rgba(240,253,244,0.35);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:8px;">⚙️ Settings</p>', unsafe_allow_html=True)
-conf_threshold = st.sidebar.slider("Min. CNN Confidence %", min_value=20, max_value=90, value=50, step=5)
-show_heatmap = st.sidebar.toggle("Show Grad-CAM Heatmap", value=True)
-show_top3    = st.sidebar.toggle("Show Top-3 CNN Predictions", value=True)
-use_gemini   = st.sidebar.toggle("Enable Gemini Vision Analysis", value=True)
-show_chatbot = st.sidebar.toggle("Show AI Farming Chatbot", value=True)
-st.sidebar.markdown('<div class="cs-divider"></div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
+
+# Expander for Translation Output
+with st.sidebar.expander("🌍 Translate Language", expanded=True):
+    language_label = st.selectbox("Translate Output To", list(WORLD_LANGUAGES.keys()), index=0, label_visibility="collapsed")
+    lang_code = WORLD_LANGUAGES[language_label]
+
+# Expander for Configuration Settings
+with st.sidebar.expander("⚙️ Advanced Settings", expanded=False):
+    conf_threshold = st.slider("Min. CNN Confidence %", min_value=20, max_value=90, value=50, step=5)
+    show_heatmap = st.toggle("Show Grad-CAM Heatmap", value=True)
+    show_top3    = st.toggle("Show Top-3 CNN Predictions", value=True)
+    use_gemini   = st.toggle("Enable Gemini Vision Analysis", value=True)
+    show_chatbot = st.toggle("Show AI Farming Chatbot", value=True)
+
+st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
 
 _gemini_client, _gemini_err = get_gemini_client()
 gemini_ok = _gemini_client is not None
@@ -856,14 +861,20 @@ if page == "🏠 Home":
     left_col, right_col = st.columns([1, 1], gap="large")
 
     with left_col:
-        st.markdown("""<div class="cs-section cs-fadein"><div class="cs-section-icon green">📷</div><div><p class="cs-section-title">Upload or Capture Leaf</p><p class="cs-section-sub">Any plant · JPG, JPEG, PNG · Clear image for best results</p></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="cs-section cs-fadein"><div class="cs-section-icon green">📷</div><div><p class="cs-section-title">Upload or Capture Leaf</p><p class="cs-section-sub">Select your preferred leaf photo source</p></div></div>""", unsafe_allow_html=True)
         image = None
-        camera_photo = st.camera_input("Capture with camera")
-        if camera_photo:
-            image = Image.open(camera_photo).convert("RGB")
-        uploaded_file = st.file_uploader("Or drop your image here", type=["jpg","jpeg","png"])
-        if uploaded_file:
-            image = Image.open(uploaded_file).convert("RGB")
+        
+        input_tab_file, input_tab_camera = st.tabs(["📁 Upload Image File", "📸 Use Camera Capture"])
+        
+        with input_tab_file:
+            uploaded_file = st.file_uploader("Or drop your image here", type=["jpg","jpeg","png"], key="file_uploader_key", label_visibility="collapsed")
+            if uploaded_file:
+                image = Image.open(uploaded_file).convert("RGB")
+                
+        with input_tab_camera:
+            camera_photo = st.camera_input("Point camera at leaf", key="camera_input_key", label_visibility="collapsed")
+            if camera_photo:
+                image = Image.open(camera_photo).convert("RGB")
 
         if image is not None:
             img_np_display = np.array(image)
@@ -1080,179 +1091,195 @@ if page == "🏠 Home":
         p_name   = st.session_state.plant_name
         conf     = st.session_state.cnn_confidence
 
-        # ── GRAD-CAM (FIX 5: guard on model + input_tensor both not-None) ──
-        if show_heatmap and model is not None and it is not None and pred is not None and img_np is not None:
-            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon sky">🗺️</div><div><p class="cs-section-title">Grad-CAM Visual Explanation</p><p class="cs-section-sub">CNN attention map — shows where disease pattern was detected</p></div></div>""", unsafe_allow_html=True)
-            heatmap = generate_gradcam(model, it, p_class)
-            hm1, hm2 = st.columns(2, gap="medium")
-            with hm1:
-                st.image(image, caption="Original", use_container_width=True)
-            with hm2:
-                if heatmap is not None:
-                    st.image(overlay_heatmap(img_np, heatmap), caption="Grad-CAM (red = high attention)", use_container_width=True)
-                else:
-                    st.markdown('<div class="cs-empty" style="min-height:160px;"><div class="cs-empty-icon" style="font-size:32px;">🗺️</div><div class="cs-empty-title">Heatmap unavailable for this model</div></div>', unsafe_allow_html=True)
+        # ── DYNAMIC OUTPUT TABS ──
+        st.markdown('<div style="margin-top: 32px;"></div>', unsafe_allow_html=True)
+        
+        tab_titles = ["🩺 Diagnosis & Heatmap"]
+        has_med = gd and "medicine" in gd and "error" not in gd
+        has_fert = gd and "fertilizer" in gd and "error" not in gd
+        
+        if has_med:
+            tab_titles.append("💊 Medicine Details")
+        if has_fert:
+            tab_titles.append("🌱 Fertilizer Details")
+        
+        tab_titles.append("🤖 AI Assistant & Voice")
+        
+        tabs = st.tabs(tab_titles)
+        
+        # ── TAB 1: DIAGNOSIS & HEATMAP ──
+        with tabs[0]:
+            # Treatment Summary
+            if dis or gd:
+                st.markdown("""<div class="cs-section cs-fadein" style="margin-top:10px;"><div class="cs-section-icon rose">🩺</div><div><p class="cs-section-title">Diagnosis & Treatment Summary</p><p class="cs-section-sub">Overview of the crop health condition</p></div></div>""", unsafe_allow_html=True)
+                pathogen = gd.get("disease_pathogen","N/A") if gd and "error" not in gd else "N/A"
+                
+                # Escape HTML characters to prevent markdown/layout injection
+                s_desc = html.escape(desc)
+                s_treat = html.escape(treat)
+                s_prev = html.escape(prev)
+                s_pathogen = html.escape(pathogen)
+                
+                summary_html = f"""
+                <!-- Desktop Layout (4 Columns) -->
+                <div class="device-desktop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+                </div>
+                
+                <!-- Laptop Layout (3 Columns + 1 Row) -->
+                <div class="device-laptop">
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                    <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+                    <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+                    <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+                  </div>
+                  <div class="cs-info" style="width: 100%;"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+                </div>
 
-        # ── TREATMENT SUMMARY ──
-        if dis or gd:
-            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon rose">🩺</div><div><p class="cs-section-title">Diagnosis & Treatment Summary</p><p class="cs-section-sub">Powered by Gemini Vision · Translated to your language</p></div></div>""", unsafe_allow_html=True)
-            pathogen = gd.get("disease_pathogen","N/A") if gd and "error" not in gd else "N/A"
-            
-            # Escape HTML characters to prevent markdown/layout injection
-            s_desc = html.escape(desc)
-            s_treat = html.escape(treat)
-            s_prev = html.escape(prevention)
-            s_pathogen = html.escape(pathogen)
-            
-            summary_html = f"""
-            <!-- Desktop Layout (4 Columns) -->
-            <div class="device-desktop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
-              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-            </div>
-            
-            <!-- Laptop Layout (3 Columns + 1 Row) -->
-            <div class="device-laptop">
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
-                <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-                <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-                <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-              </div>
-              <div class="cs-info" style="width: 100%;"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-            </div>
+                <!-- Tablet Layout (2x2 Grid) -->
+                <div class="device-tablet" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+                </div>
 
-            <!-- Tablet Layout (2x2 Grid) -->
-            <div class="device-tablet" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-            </div>
-
-            <!-- Mobile Layout (Vertical Stack) -->
-            <div class="device-mobile" style="display: flex; flex-direction: column; gap: 10px;">
-              <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body" style="font-size:12px;">{s_desc}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body" style="font-size:12px;">{s_treat}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body" style="font-size:12px;">{s_prev}</p></div>
-              <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big" style="font-size:14px;">{s_pathogen}</p></div>
-            </div>
-            """
-            st.markdown(summary_html, unsafe_allow_html=True)
-
-        # ── MEDICINE DETAIL ──
-        if gd and "medicine" in gd and "error" not in gd:
-            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon rose">💊</div><div><p class="cs-section-title">Medicine — Full Details</p><p class="cs-section-sub">Gemini-generated · Dose · Safety · Pre-harvest interval · Alternatives</p></div></div>""", unsafe_allow_html=True)
-            render_gemini_medicine(gd["medicine"])
-
-        # ── FERTILIZER DETAIL ──
-        if gd and "fertilizer" in gd and "error" not in gd:
-            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:24px;"><div class="cs-section-icon violet">🌱</div><div><p class="cs-section-title">Fertilizer — Full Details</p><p class="cs-section-sub">Gemini-generated · NPK · Timing · Benefits · Pro tips</p></div></div>""", unsafe_allow_html=True)
-            render_gemini_fertilizer(gd["fertilizer"])
-
-        # ── VOICE (FIX 11: tempfile per request, thread-safe) ──
-        voice_text = (
-            f"Plant identified: {p_name}. Disease: {gd.get('disease_name', dis) if gd and 'error' not in gd else dis}. "
-            f"Severity: {sev}. Treatment: {treat[:200]}. "
-            f"Recommended medicine: {gd.get('medicine',{}).get('name','See details') if gd else 'See details'}."
-        )
-        try:
-            tts = gTTS(voice_text, lang='en')
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                tts.save(tmp.name)
-                tmp.seek(0)
-                audio_bytes = open(tmp.name, "rb").read()
-            os.unlink(tmp.name)
-            st.markdown("""<div class="cs-voice-wrap cs-fadein" style="margin-top:20px;"><div class="cs-voice-icon">🔊</div><div><div class="cs-voice-label">Voice Summary</div><div class="cs-voice-sub">AI diagnosis read aloud</div></div></div>""", unsafe_allow_html=True)
-            st.audio(audio_bytes)
-        except Exception as e:
-            st.caption(f"ℹ️ Voice unavailable ({type(e).__name__})")
-
-        # ── PDF REPORT ──
-        st.markdown("""<div class="cs-section cs-fadein" style="margin-top:20px;"><div class="cs-section-icon amber">📄</div><div><p class="cs-section-title">Download Full Report</p><p class="cs-section-sub">PDF includes Gemini medicine, fertilizer NPK, safety & tips</p></div></div>""", unsafe_allow_html=True)
-        try:
-            pdf_bytes = generate_pdf_report(
-                disease=dis, plant_name=p_name, confidence=conf,
-                gemini_data=gd if gd and "error" not in gd else {},
-                severity_label=sev
-            )
-            st.download_button(
-                label="📄 Download PDF Report", data=pdf_bytes,
-                file_name=f"cropsense_{p_name.replace(' ','_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf", use_container_width=True
-            )
-        except Exception as e:
-            st.markdown(f'<div class="cs-error cs-warn"><div class="cs-error-icon">⚠️</div><div><div class="cs-error-title">PDF Error</div><div class="cs-error-body">Results shown above. Failed: {str(e)[:80]}</div></div></div>', unsafe_allow_html=True)
-
-        # ════════════════════════════════════════════════
-        # GEMINI CHATBOT
-        # FIX 3: submitted-flag prevents duplicate messages on rerun
-        # FIX 7: suggestion chips use real st.button (not html onclick)
-        # ════════════════════════════════════════════════
-        if show_chatbot:
-            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:32px;"><div class="cs-section-icon blue">💬</div><div><p class="cs-section-title">AI Farming Assistant</p><p class="cs-section-sub">Powered by Gemini · Context-aware · Speaks your language</p></div></div>""", unsafe_allow_html=True)
-
-            if "chat_history" not in st.session_state:
-                st.session_state.chat_history = []
-            if "chat_submitted" not in st.session_state:
-                st.session_state.chat_submitted = False
-
-            # FIX 7 — real Streamlit buttons for suggestion chips
-            suggestions = [
-                f"What are early signs of {dis[:30]}?",
-                f"How to prevent {dis[:25]} next season?",
-                "Is this safe to eat after treatment?",
-                "What organic alternatives exist?",
-            ]
-            chip_cols = st.columns(len(suggestions))
-            for i, (col_c, sugg) in enumerate(zip(chip_cols, suggestions)):
-                with col_c:
-                    if st.button(sugg, key=f"chip_{i}", use_container_width=True):
-                        st.session_state.chat_history.append({"role":"user","content":sugg})
-                        with st.spinner("🔮 Thinking…"):
-                            reply = gemini_chatbot_response(sugg, dis, p_name, conf, sev, lang_code)
-                        st.session_state.chat_history.append({"role":"assistant","content":reply})
-                        st.rerun()
-
-            # Chat history display
-            if st.session_state.chat_history:
-                st.markdown('<div class="chat-wrap">', unsafe_allow_html=True)
-                for msg in st.session_state.chat_history[-10:]:
-                    if msg["role"] == "user":
-                        st.markdown(f'<div class="chat-msg-user"><div class="chat-bubble-user">{html.escape(msg["content"])}</div></div>', unsafe_allow_html=True)
+                <!-- Mobile Layout (Vertical Stack) -->
+                <div class="device-mobile" style="display: flex; flex-direction: column; gap: 10px;">
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body" style="font-size:12px;">{s_desc}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body" style="font-size:12px;">{s_treat}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body" style="font-size:12px;">{s_prev}</p></div>
+                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big" style="font-size:14px;">{s_pathogen}</p></div>
+                </div>
+                """
+                st.markdown(summary_html, unsafe_allow_html=True)
+                
+            # Grad-CAM Heatmap
+            if show_heatmap and model is not None and it is not None and pred is not None and img_np is not None:
+                st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon sky">🗺️</div><div><p class="cs-section-title">Grad-CAM Visual Explanation</p><p class="cs-section-sub">CNN attention map — shows where disease pattern was detected</p></div></div>""", unsafe_allow_html=True)
+                heatmap = generate_gradcam(model, it, p_class)
+                hm1, hm2 = st.columns(2, gap="medium")
+                with hm1:
+                    st.image(image, caption="Original", use_container_width=True)
+                with hm2:
+                    if heatmap is not None:
+                        st.image(overlay_heatmap(img_np, heatmap), caption="Grad-CAM (red = high attention)", use_container_width=True)
                     else:
-                        st.markdown(f'<div class="chat-msg-ai"><div class="chat-bubble-ai"><span class="ai-label">🔮 CropSense AI</span>{msg["content"]}</div></div>', unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="cs-empty" style="min-height:160px;"><div class="cs-empty-icon" style="font-size:32px;">🗺️</div><div class="cs-empty-title">Heatmap unavailable for this model</div></div>', unsafe_allow_html=True)
 
-            # Input
-            chat_col1, chat_col2 = st.columns([5, 1])
-            with chat_col1:
-                user_input = st.text_input(
-                    "Ask about your crop…",
-                    placeholder=f"e.g. How do I treat {dis[:25]}?",
-                    key="chat_input",
-                    label_visibility="collapsed"
+            # PDF Report Download
+            st.markdown("""<div class="cs-section cs-fadein" style="margin-top:28px;"><div class="cs-section-icon amber">📄</div><div><p class="cs-section-title">Download Full Report</p><p class="cs-section-sub">PDF includes medicine, fertilizer NPK, safety & tips</p></div></div>""", unsafe_allow_html=True)
+            try:
+                pdf_bytes = generate_pdf_report(
+                    disease=dis, plant_name=p_name, confidence=conf,
+                    gemini_data=gd if gd and "error" not in gd else {},
+                    severity_label=sev
                 )
-            with chat_col2:
-                send_clicked = st.button("Ask →", key="chat_send", use_container_width=True)
+                st.download_button(
+                    label="📄 Download PDF Report", data=pdf_bytes,
+                    file_name=f"cropsense_{p_name.replace(' ','_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf", use_container_width=True
+                )
+            except Exception as e:
+                st.markdown(f'<div class="cs-error cs-warn"><div class="cs-error-icon">⚠️</div><div><div class="cs-error-title">PDF Error</div><div class="cs-error-body">Results shown above. Failed: {str(e)[:80]}</div></div></div>', unsafe_allow_html=True)
 
-            # FIX 3 — guard against duplicate submission on rerun
-            if send_clicked and user_input.strip() and not st.session_state.chat_submitted:
-                st.session_state.chat_submitted = True
-                st.session_state.chat_history.append({"role":"user","content":user_input.strip()})
-                with st.spinner("🔮 Gemini thinking…"):
-                    reply = gemini_chatbot_response(
-                        user_input.strip(), dis, p_name, conf, sev, lang_code)
-                st.session_state.chat_history.append({"role":"assistant","content":reply})
-                st.rerun()
-            else:
-                st.session_state.chat_submitted = False   # reset after rerun
-
-            if st.session_state.chat_history:
-                if st.button("🗑 Clear chat", key="chat_clear"):
+        # ── TAB 2 (or 3): MEDICINE DETAILS ──
+        next_tab_idx = 1
+        if has_med:
+            with tabs[next_tab_idx]:
+                st.markdown("""<div class="cs-section cs-fadein" style="margin-top:10px;"><div class="cs-section-icon rose">💊</div><div><p class="cs-section-title">Medicine — Full Details</p><p class="cs-section-sub">Dose · Safety · Pre-harvest interval · Alternatives</p></div></div>""", unsafe_allow_html=True)
+                render_gemini_medicine(gd["medicine"])
+            next_tab_idx += 1
+                
+        # ── TAB 3 (or 2): FERTILIZER DETAILS ──
+        if has_fert:
+            with tabs[next_tab_idx]:
+                st.markdown("""<div class="cs-section cs-fadein" style="margin-top:10px;"><div class="cs-section-icon violet">🌱</div><div><p class="cs-section-title">Fertilizer — Full Details</p><p class="cs-section-sub">NPK · Timing · Benefits · Pro tips</p></div></div>""", unsafe_allow_html=True)
+                render_gemini_fertilizer(gd["fertilizer"])
+            next_tab_idx += 1
+            
+        # ── TAB 4: CHAT & VOICE ──
+        with tabs[next_tab_idx]:
+            # Voice Summary
+            voice_text = (
+                f"Plant identified: {p_name}. Disease: {gd.get('disease_name', dis) if gd and 'error' not in gd else dis}. "
+                f"Severity: {sev}. Treatment: {treat[:200]}. "
+                f"Recommended medicine: {gd.get('medicine',{}).get('name','See details') if gd and 'error' not in gd else 'See details'}."
+            )
+            try:
+                tts = gTTS(voice_text, lang='en')
+                with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                    tts.save(tmp.name)
+                    tmp.seek(0)
+                    audio_bytes = open(tmp.name, "rb").read()
+                os.unlink(tmp.name)
+                st.markdown("""<div class="cs-voice-wrap cs-fadein" style="margin-top:10px;"><div class="cs-voice-icon">🔊</div><div><div class="cs-voice-label">Voice Summary</div><div class="cs-voice-sub">AI diagnosis read aloud</div></div></div>""", unsafe_allow_html=True)
+                st.audio(audio_bytes)
+            except Exception as e:
+                st.caption(f"ℹ️ Voice unavailable ({type(e).__name__})")
+                
+            # Chatbot
+            if show_chatbot:
+                st.markdown("""<div class="cs-section cs-fadein" style="margin-top:20px;"><div class="cs-section-icon blue">💬</div><div><p class="cs-section-title">AI Farming Assistant</p><p class="cs-section-sub">Powered by Gemini · Context-aware · Speaks your language</p></div></div>""", unsafe_allow_html=True)
+                if "chat_history" not in st.session_state:
                     st.session_state.chat_history = []
+                if "chat_submitted" not in st.session_state:
+                    st.session_state.chat_submitted = False
+                    
+                suggestions = [
+                    f"What are early signs of {dis[:30]}?",
+                    f"How to prevent {dis[:25]} next season?",
+                    "Is this safe to eat after treatment?",
+                    "What organic alternatives exist?",
+                ]
+                chip_cols = st.columns(len(suggestions))
+                for i, (col_c, sugg) in enumerate(zip(chip_cols, suggestions)):
+                    with col_c:
+                        if st.button(sugg, key=f"chip_{i}", use_container_width=True):
+                            st.session_state.chat_history.append({"role":"user","content":sugg})
+                            with st.spinner("🔮 Thinking…"):
+                                reply = gemini_chatbot_response(sugg, dis, p_name, conf, sev, lang_code)
+                            st.session_state.chat_history.append({"role":"assistant","content":reply})
+                            st.rerun()
+                            
+                if st.session_state.chat_history:
+                    st.markdown('<div class="chat-wrap">', unsafe_allow_html=True)
+                    for msg in st.session_state.chat_history[-10:]:
+                        if msg["role"] == "user":
+                            st.markdown(f'<div class="chat-msg-user"><div class="chat-bubble-user">{html.escape(msg["content"])}</div></div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown(f'<div class="chat-msg-ai"><div class="chat-bubble-ai"><span class="ai-label">🔮 CropSense AI</span>{msg["content"]}</div></div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                chat_col1, chat_col2 = st.columns([5, 1])
+                with chat_col1:
+                    user_input = st.text_input(
+                        "Ask about your crop…",
+                        placeholder=f"e.g. How do I treat {dis[:25]}?",
+                        key="chat_input",
+                        label_visibility="collapsed"
+                    )
+                with chat_col2:
+                    send_clicked = st.button("Ask →", key="chat_send", use_container_width=True)
+                    
+                if send_clicked and user_input.strip() and not st.session_state.chat_submitted:
+                    st.session_state.chat_submitted = True
+                    st.session_state.chat_history.append({"role":"user","content":user_input.strip()})
+                    with st.spinner("🔮 Gemini thinking…"):
+                        reply = gemini_chatbot_response(
+                            user_input.strip(), dis, p_name, conf, sev, lang_code)
+                    st.session_state.chat_history.append({"role":"assistant","content":reply})
                     st.rerun()
+                else:
+                    st.session_state.chat_submitted = False
+                    
+                if st.session_state.chat_history:
+                    if st.button("🗑 Clear chat", key="chat_clear"):
+                        st.session_state.chat_history = []
+                        st.rerun()
 
     elif show_chatbot and analysis_blocked:
         st.markdown("""<div class="cs-section cs-fadein" style="margin-top:32px;"><div class="cs-section-icon blue">💬</div><div><p class="cs-section-title">AI Farming Assistant</p></div></div>""", unsafe_allow_html=True)
