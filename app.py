@@ -932,6 +932,7 @@ if page == "🏠 Home":
         ("cnn_confidence", 0.0), ("predicted_class", 0),
         ("description", ""), ("treatment", ""), ("prevention", ""),
         ("input_tensor", None), ("prediction", None), ("img_np_shape", None),
+        ("prediction_time_date", ""), ("prediction_time_time", ""),
     ]:
         if key not in st.session_state:
             st.session_state[key] = default
@@ -983,6 +984,12 @@ if page == "🏠 Home":
                 # Compute a lightweight hash to detect image changes
                 img_hash = hash(img_np.tobytes())
                 image_changed = (img_hash != st.session_state.last_image_hash)
+                
+                if image_changed:
+                    # Capture unique real-time timestamp at the exact moment of prediction
+                    pred_now = datetime.now()
+                    st.session_state.prediction_time_date = pred_now.strftime("%d-%m-%Y")
+                    st.session_state.prediction_time_time = pred_now.strftime("%H:%M:%S")
 
                 # ── CNN PREDICTION ──
                 cnn_disease = "Unknown"
@@ -1089,8 +1096,8 @@ if page == "🏠 Home":
                     st.markdown(f'<div class="cs-alert-banner">🔁 {alert_msg}</div>', unsafe_allow_html=True)
                 if image_changed:  # only log new images, not reruns
                     new_entry = {
-                        "Date": datetime.now().strftime("%d-%m-%Y"),
-                        "Time": datetime.now().strftime("%H:%M:%S"),
+                        "Date": st.session_state.prediction_time_date or datetime.now().strftime("%d-%m-%Y"),
+                        "Time": st.session_state.prediction_time_time or datetime.now().strftime("%H:%M:%S"),
                         "Plant": plant_name,
                         "Disease": final_disease,
                         "CNN_Confidence": round(cnn_confidence, 1),
