@@ -386,13 +386,43 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
 .top3-bar{height:100%;border-radius:99px;}
 .cs-fadein{animation:fadeIn 0.6s ease both;}.symptoms-box{background:rgba(255,255,255,0.03);border-left:3px solid var(--cs-sky);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:12px 16px;font-size:13px;color:var(--cs-muted);line-height:1.7;margin:10px 0;}
 .chip-btn button{background:rgba(16,185,129,0.08)!important;border:1px solid rgba(52,211,153,0.2)!important;color:rgba(240,253,244,0.7)!important;border-radius:999px!important;padding:4px 12px!important;font-size:11px!important;width:auto!important;}
+/* Mobile Portrait & Landscape (up to 768px) */
 @media(max-width:768px){
-  .cs-hero{padding:36px 20px;min-height:auto;}
-  .cs-hero-title{font-size:26px;}
-  .cs-hero-stats{position:static;flex-direction:row;transform:none;margin-top:24px;flex-wrap:wrap;gap:8px;}
-  .cs-about-hero{padding:20px 24px;}
-  .main .block-container{padding:0 1rem 3rem!important;}
-  .cs-info{margin-bottom:12px;}
+  .cs-hero{padding:24px 16px;min-height:auto;border-radius:0 0 var(--radius-md) var(--radius-md);}
+  .cs-hero-bg{display:none!important;} /* Hide heavy floating orbs and grids on mobile for clarity and performance */
+  .cs-hero-title{font-size:24px;text-align:center;}
+  .cs-hero-sub{text-align:center;font-size:12px;}
+  .cs-hero-badge{margin:0 auto 14px;display:flex;justify-content:center;}
+  .cs-hero-stats{position:static;flex-direction:row;transform:none;margin-top:20px;flex-wrap:wrap;gap:6px;justify-content:center;}
+  .cs-stat-pill{padding:8px 12px;min-width:75px;}
+  .cs-stat-val{font-size:18px;}
+  .cs-about-hero{padding:20px 16px;border-radius:var(--radius-md);}
+  .main .block-container{padding:0 0.75rem 2rem!important;}
+  .cs-card, .cs-result, .detail-card{padding:16px;border-radius:var(--radius-md);}
+  .cs-info{margin-bottom:10px;padding:12px 14px;}
+  .cs-info-big{font-size:15px;}
+  .cs-info-body{font-size:12px;line-height:1.6;}
+  .detail-card-header{padding-bottom:10px;margin-bottom:12px;}
+  .detail-card-icon{width:36px;height:36px;font-size:18px;border-radius:8px;}
+  .detail-card-title{font-size:15px;}
+  .npk-val{font-size:15px;}
+  .npk-box{padding:6px 4px;}
+  .stButton>button, .chip-btn button{
+    min-height: 48px!important; /* Standard touch target height for mobile */
+    font-size: 14px!important;
+    display: flex!important;
+    align-items: center!important;
+    justify-content: center!important;
+  }
+}
+
+/* Tablet Layouts (768px to 1024px) */
+@media(min-width:769px) and (max-width:1024px){
+  .cs-hero{padding:36px 36px 32px;}
+  .cs-hero-title{font-size:32px;}
+  .cs-hero-stats{right:36px;}
+  .main .block-container{padding:0 1.5rem 3rem!important;}
+  .cs-card, .cs-result, .detail-card{padding:20px;}
 }
 </style>
 """, unsafe_allow_html=True)
