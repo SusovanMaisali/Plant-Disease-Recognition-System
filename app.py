@@ -1114,47 +1114,41 @@ if page == "🏠 Home":
                 st.markdown("""<div class="cs-section cs-fadein" style="margin-top:10px;"><div class="cs-section-icon rose">🩺</div><div><p class="cs-section-title">Diagnosis & Treatment Summary</p><p class="cs-section-sub">Overview of the crop health condition</p></div></div>""", unsafe_allow_html=True)
                 pathogen = gd.get("disease_pathogen","N/A") if gd and "error" not in gd else "N/A"
                 
-                # Escape HTML characters to prevent markdown/layout injection
-                s_desc = html.escape(desc)
-                s_treat = html.escape(treat)
-                s_prev = html.escape(prev)
-                s_pathogen = html.escape(pathogen)
+                # Escape HTML characters and replace newlines with <br> to keep block tags single-line or valid HTML
+                s_desc = html.escape(desc).replace('\n', '<br>')
+                s_treat = html.escape(treat).replace('\n', '<br>')
+                s_prev = html.escape(prev).replace('\n', '<br>')
+                s_pathogen = html.escape(pathogen).replace('\n', '<br>')
                 
-                summary_html = f"""
-                <!-- Desktop Layout (4 Columns) -->
-                <div class="device-desktop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-                </div>
-                
-                <!-- Laptop Layout (3 Columns + 1 Row) -->
-                <div class="device-laptop">
-                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
-                    <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-                    <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-                    <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-                  </div>
-                  <div class="cs-info" style="width: 100%;"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-                </div>
-
-                <!-- Tablet Layout (2x2 Grid) -->
-                <div class="device-tablet" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
-                </div>
-
-                <!-- Mobile Layout (Vertical Stack) -->
-                <div class="device-mobile" style="display: flex; flex-direction: column; gap: 10px;">
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body" style="font-size:12px;">{s_desc}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body" style="font-size:12px;">{s_treat}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body" style="font-size:12px;">{s_prev}</p></div>
-                  <div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big" style="font-size:14px;">{s_pathogen}</p></div>
-                </div>
-                """
+                import textwrap
+                summary_html = textwrap.dedent(f"""
+<div class="device-desktop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
+<div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+</div>
+<div class="device-laptop">
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+<div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+</div>
+<div class="cs-info" style="width: 100%;"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+</div>
+<div class="device-tablet" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+<div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body">{s_desc}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body">{s_treat}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body">{s_prev}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big">{s_pathogen}</p></div>
+</div>
+<div class="device-mobile" style="display: flex; flex-direction: column; gap: 10px;">
+<div class="cs-info"><div class="cs-info-accent" style="background:#22d3ee;"></div><span class="cs-info-tag tag-desc">📝 Description</span><p class="cs-info-body" style="font-size:12px;">{s_desc}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#10b981;"></div><span class="cs-info-tag tag-treat">💊 Treatment</span><p class="cs-info-body" style="font-size:12px;">{s_treat}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fbbf24;"></div><span class="cs-info-tag tag-fert">🌿 Prevention</span><p class="cs-info-body" style="font-size:12px;">{s_prev}</p></div>
+<div class="cs-info"><div class="cs-info-accent" style="background:#fb923c;"></div><span class="cs-info-tag tag-med">🦠 Pathogen</span><p class="cs-info-big" style="font-size:14px;">{s_pathogen}</p></div>
+</div>
+                """).strip()
                 st.markdown(summary_html, unsafe_allow_html=True)
                 
             # Grad-CAM Heatmap
