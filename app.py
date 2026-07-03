@@ -807,25 +807,46 @@ if page == "🏠 Home":
 
                 is_healthy_cnn = "healthy" in cnn_disease.lower()
 
-                # ── FIX 6: run Gemini only when image changes; reuse cached result otherwise ──
+                # ── RUN GEMINI OR FALLBACK TO OFFLINE DATABASE ──
                 if use_gemini and gemini_ok:
                     if image_changed:
                         img_bytes = image_to_bytes(image)
                         with st.spinner("🔮 Gemini Vision analyzing plant & disease…"):
                             raw_gemini = gemini_analyze_leaf(img_bytes, cnn_disease, cnn_confidence)
+                        
+                        # Fallback to offline database if Gemini failed with an error
+                        if "error" in raw_gemini:
+                            try:
+                                from utils.offline_database import OFFLINE_DB
+                                if cnn_disease in OFFLINE_DB:
+                                    offline_data = dict(OFFLINE_DB[cnn_disease])
+                                    offline_data["error"] = raw_gemini["error"]
+                                    raw_gemini = offline_data
+                            except Exception:
+                                pass
+                        
                         st.session_state.gemini_data_raw = raw_gemini
                         st.session_state.last_image_hash = img_hash
                     gemini_data_raw = st.session_state.gemini_data_raw
                 else:
-                    gemini_data_raw = {}
+                    # ── OFFLINE DATABASE FALLBACK ──
+                    offline_data = {}
+                    try:
+                        from utils.offline_database import OFFLINE_DB
+                        if cnn_disease in OFFLINE_DB:
+                            offline_data = OFFLINE_DB[cnn_disease]
+                    except Exception:
+                        pass
+                    gemini_data_raw = offline_data
                     if image_changed:
+                        st.session_state.gemini_data_raw = offline_data
                         st.session_state.last_image_hash = img_hash
 
                 # FIX 8: translate at render time
                 gemini_data = translate_gemini_data(gemini_data_raw, lang_code)
 
                 # Determine final display values
-                if gemini_data and "error" not in gemini_data:
+                if gemini_data and ("error" not in gemini_data or "plant_name" in gemini_data):
                     plant_name    = gemini_data.get("plant_name", "Unknown Plant")
                     plant_sci     = gemini_data.get("plant_scientific", "")
                     final_disease = gemini_data.get("disease_name", cnn_disease)
