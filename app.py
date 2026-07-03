@@ -163,6 +163,17 @@ def save_users(users: dict):
         json.dump(users, f, indent=4)
 
 def render_auth_page():
+    # Sidebar navigation for login/register when logged out
+    st.sidebar.markdown("""
+    <div class="sb-brand" style="margin-bottom: 20px;">
+      <div class="sb-logo"><div class="sb-logo-icon">🌿</div><div><div class="sb-logo-name">CropSense AI</div><span class="sb-logo-ver">v3.0 Pro</span></div></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    auth_mode = st.sidebar.radio("Access Control", ["🔑 Sign In", "📝 Register New Account"], key="auth_navigate")
+    st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
+    st.sidebar.info("Welcome! Please register an account or log in to begin leaf disease diagnostics.")
+    
     st.markdown("""
     <div style="text-align: center; margin-bottom: 24px; margin-top: 32px;" class="cs-fadein">
         <h1 style="font-family:'Clash Display',sans-serif; font-size:clamp(32px, 5vw, 48px); color:var(--cs-white); margin-bottom: 8px;">🌿 CropSense AI</h1>
@@ -173,10 +184,8 @@ def render_auth_page():
     col_l, col_c, col_r = st.columns([1, 1.5, 1])
     with col_c:
         st.markdown('<div class="cs-card cs-fadein">', unsafe_allow_html=True)
-        tab_login, tab_signup = st.tabs(["🔑 Sign In", "📝 Create Account"])
-        
-        with tab_login:
-            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+        if auth_mode == "🔑 Sign In":
+            st.markdown("<h3 style='margin-bottom:16px; color:var(--cs-white); font-family:\"Clash Display\",sans-serif;'>🔑 Sign In</h3>", unsafe_allow_html=True)
             mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="login_mobile_input")
             
             if not st.session_state.login_otp_sent:
@@ -203,7 +212,7 @@ def render_auth_page():
                             st.session_state.temp_mobile = mobile.strip()
                             st.rerun()
                         else:
-                            st.error("Mobile number is not registered. Please sign up first.")
+                            st.error("User not found. Please register first.")
             else:
                 st.info(f"🔑 Demo OTP sent to {st.session_state.temp_mobile}: **{st.session_state.login_otp}**")
                 otp_input = st.text_input("Enter 4-digit OTP", placeholder="Enter OTP code", key="login_otp_input")
@@ -240,8 +249,8 @@ def render_auth_page():
                         st.session_state.temp_mobile = ""
                         st.rerun()
                         
-        with tab_signup:
-            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<h3 style='margin-bottom:16px; color:var(--cs-white); font-family:\"Clash Display\",sans-serif;'>📝 Create Account</h3>", unsafe_allow_html=True)
             name = st.text_input("Full Name", placeholder="e.g. John Doe", key="signup_name")
             signup_mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="signup_mobile")
             email = st.text_input("Email Address", placeholder="e.g. john@example.com", key="signup_email")
