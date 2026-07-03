@@ -45,6 +45,19 @@ st.set_page_config(
     page_icon="🌿", layout="wide", initial_sidebar_state="expanded"
 )
 
+# Initialize Session State Auth Variables immediately
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    st.session_state.user_mobile = ""
+    st.session_state.user_email = ""
+    st.session_state.login_otp = ""
+    st.session_state.login_otp_sent = False
+    st.session_state.temp_mobile = ""
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
 # ═══════════════════════════════════════════════════
 # FIX 1 — translate_text defined FIRST (before any @st.cache_data function that calls it)
 # ═══════════════════════════════════════════════════
@@ -801,19 +814,6 @@ def render_auth_page():
                         st.success("Account created and logged in successfully!")
                         st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-
-# Global initialization of session states
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.user_name = ""
-    st.session_state.user_mobile = ""
-    st.session_state.user_email = ""
-    st.session_state.login_otp = ""
-    st.session_state.login_otp_sent = False
-    st.session_state.temp_mobile = ""
-
-if "history" not in st.session_state:
-    st.session_state.history = []
 
 if st.session_state.logged_in and not st.session_state.history:
     csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
