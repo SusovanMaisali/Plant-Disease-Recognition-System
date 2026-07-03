@@ -516,9 +516,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════
-# SIDEBAR  (FIX 2: gemini_ok resolved via cached function, not module-level call)
-# ═══════════════════════════════════════════════════
+if not st.session_state.logged_in:
+    render_auth_page()
+    st.markdown("""<div class="cs-footer cs-fadein" style="margin-top:40px; padding:20px 0; border-top:1px solid var(--cs-border); text-align:center;"><div class="cs-footer-logo" style="font-family:'Clash Display',sans-serif; font-weight:600; font-size:13px; color:var(--cs-mint);">🌿 CropSense AI v3.0 Pro</div><div class="cs-footer-sub" style="font-size:10px; color:var(--cs-muted); margin-top:4px;">TensorFlow · Gemini Vision · OpenCV · Grad-CAM · ReportLab · Streamlit · Empowering farmers worldwide</div></div>""", unsafe_allow_html=True)
+    st.stop()
+
 st.sidebar.markdown("""
 <div class="sb-brand">
   <div class="sb-logo"><div class="sb-logo-icon">🌿</div><div><div class="sb-logo-name">CropSense AI</div><span class="sb-logo-ver">v3.0 Pro + Gemini</span></div></div>
@@ -550,6 +552,24 @@ if gemini_ok:
     st.sidebar.markdown('<div class="sb-status" style="margin:4px 0;">🔮 Gemini API connected</div>', unsafe_allow_html=True)
 else:
     st.sidebar.markdown(f'<div style="font-size:11px;color:#fbbf24;padding:6px 10px;background:rgba(251,191,36,0.08);border-radius:8px;margin:4px 0;">⚠️ Gemini: {(_gemini_err or "")[:50]}</div>', unsafe_allow_html=True)
+
+# Logged-in User Information & Logout Button
+st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
+st.sidebar.markdown(f"""
+<div style="background:rgba(255,255,255,0.02);border:1px solid var(--cs-border);border-radius:12px;padding:12px;margin-bottom:12px;">
+    <div style="font-size:11px;color:var(--cs-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Logged in as</div>
+    <div style="font-family:'Clash Display',sans-serif;font-size:14px;font-weight:700;color:var(--cs-white);">{st.session_state.user_name}</div>
+    <div style="font-size:11px;color:var(--cs-muted);">{st.session_state.user_email}</div>
+</div>
+""", unsafe_allow_html=True)
+
+if st.sidebar.button("🚪 Sign Out", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    st.session_state.user_mobile = ""
+    st.session_state.user_email = ""
+    st.session_state.history = []
+    st.rerun()
 
 # ═══════════════════════════════════════════════════
 # HELPERS
@@ -661,9 +681,142 @@ def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
     history_df = history_df[[c for c in cols_order if c in history_df.columns]]
     return history_df
 
-# Global initialization of history in session state
-csv_path = "history/predictions.csv"
+def load_users() -> dict:
+    os.makedirs("history", exist_ok=True)
+    users_file = "history/users.json"
+    if not os.path.exists(users_file):
+        with open(users_file, "w") as f:
+            json.dump({}, f)
+    try:
+        with open(users_file, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_users(users: dict):
+    os.makedirs("history", exist_ok=True)
+    users_file = "history/users.json"
+    with open(users_file, "w") as f:
+        json.dump(users, f, indent=4)
+
+def render_auth_page():
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 24px; margin-top: 32px;" class="cs-fadein">
+        <h1 style="font-family:'Clash Display',sans-serif; font-size:clamp(32px, 5vw, 48px); color:var(--cs-white); margin-bottom: 8px;">🌿 CropSense AI</h1>
+        <p style="color:var(--cs-mint); font-size:16px; font-family:'Satoshi',sans-serif; max-width:550px; margin: 0 auto;">Intelligent Crop Disease Detection & Farm Management Dashboard</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_l, col_c, col_r = st.columns([1, 1.5, 1])
+    with col_c:
+        st.markdown('<div class="cs-card cs-fadein">', unsafe_allow_html=True)
+        tab_login, tab_signup = st.tabs(["🔑 Sign In", "📝 Create Account"])
+        
+        with tab_login:
+            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+            mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="login_mobile_input")
+            
+            if not st.session_state.login_otp_sent:
+                if st.button("Request OTP Code", use_container_width=True, key="req_otp_btn"):
+                    if not mobile.strip():
+                        st.error("Please enter a valid mobile number")
+                    else:
+                        users = load_users()
+                        if mobile.strip() in users:
+                            import random
+                            otp = f"{random.randint(1000, 9999)}"
+                            st.session_state.login_otp = otp
+                            st.session_state.login_otp_sent = True
+                            st.session_state.temp_mobile = mobile.strip()
+                            st.rerun()
+                        else:
+                            st.error("Mobile number is not registered. Please sign up first.")
+            else:
+                st.info(f"🔑 Demo OTP sent to {st.session_state.temp_mobile}: **{st.session_state.login_otp}**")
+                otp_input = st.text_input("Enter 4-digit OTP", placeholder="Enter OTP code", key="login_otp_input")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Verify & Login", use_container_width=True, key="verify_btn"):
+                        if otp_input.strip() == st.session_state.login_otp:
+                            users = load_users()
+                            user_data = users[st.session_state.temp_mobile]
+                            
+                            st.session_state.logged_in = True
+                            st.session_state.user_name = user_data["name"]
+                            st.session_state.user_mobile = user_data["mobile"]
+                            st.session_state.user_email = user_data["email"]
+                            
+                            # Load user-specific history
+                            csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
+                            st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
+                            
+                            # Reset OTP state
+                            st.session_state.login_otp_sent = False
+                            st.session_state.login_otp = ""
+                            st.session_state.temp_mobile = ""
+                            
+                            st.success("Login successful!")
+                            st.rerun()
+                        else:
+                            st.error("Invalid OTP code. Please try again.")
+                with col2:
+                    if st.button("Cancel", use_container_width=True, key="cancel_otp_btn"):
+                        st.session_state.login_otp_sent = False
+                        st.session_state.login_otp = ""
+                        st.session_state.temp_mobile = ""
+                        st.rerun()
+                        
+        with tab_signup:
+            st.markdown("<div style='margin-top:14px;'></div>", unsafe_allow_html=True)
+            name = st.text_input("Full Name", placeholder="e.g. John Doe", key="signup_name")
+            signup_mobile = st.text_input("Mobile Number", placeholder="e.g. 9876543210", key="signup_mobile")
+            email = st.text_input("Email Address", placeholder="e.g. john@example.com", key="signup_email")
+            
+            if st.button("Register & Login", use_container_width=True, key="register_btn"):
+                if not name.strip() or not signup_mobile.strip() or not email.strip():
+                    st.error("Please fill in all registration fields.")
+                else:
+                    users = load_users()
+                    if signup_mobile.strip() in users:
+                        st.error("This mobile number is already registered. Please login instead.")
+                    else:
+                        users[signup_mobile.strip()] = {
+                            "name": name.strip(),
+                            "mobile": signup_mobile.strip(),
+                            "email": email.strip()
+                        }
+                        save_users(users)
+                        
+                        # Automatically login the user
+                        st.session_state.logged_in = True
+                        st.session_state.user_name = name.strip()
+                        st.session_state.user_mobile = signup_mobile.strip()
+                        st.session_state.user_email = email.strip()
+                        
+                        # Load user-specific history
+                        csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
+                        st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
+                        
+                        st.success("Account created and logged in successfully!")
+                        st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# Global initialization of session states
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    st.session_state.user_mobile = ""
+    st.session_state.user_email = ""
+    st.session_state.login_otp = ""
+    st.session_state.login_otp_sent = False
+    st.session_state.temp_mobile = ""
+
 if "history" not in st.session_state:
+    st.session_state.history = []
+
+if st.session_state.logged_in and not st.session_state.history:
+    csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
     st.session_state.history = load_and_migrate_history(csv_path).to_dict(orient="records")
 
 def generate_gradcam(model, img_array, class_idx):
@@ -1089,7 +1242,7 @@ if page == "🏠 Home":
                 st.session_state.img_np = img_np  # numpy arrays can't be serialised but fine within session
 
                 # Save to history
-                csv_path = "history/predictions.csv"
+                csv_path = f"history/predictions_{st.session_state.user_mobile}.csv"
                 history_df = pd.DataFrame(st.session_state.history)
                 alert_msg = check_repeat_alert(history_df, final_disease)
                 if alert_msg:
