@@ -6,3 +6,6 @@ opencv-python-headless
 pillow
 gtts
 deep-translator
+matplotlib
+reportlab
+google-generativeai
