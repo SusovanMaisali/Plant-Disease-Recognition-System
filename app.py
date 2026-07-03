@@ -386,7 +386,14 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
 .top3-bar{height:100%;border-radius:99px;}
 .cs-fadein{animation:fadeIn 0.6s ease both;}.symptoms-box{background:rgba(255,255,255,0.03);border-left:3px solid var(--cs-sky);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:12px 16px;font-size:13px;color:var(--cs-muted);line-height:1.7;margin:10px 0;}
 .chip-btn button{background:rgba(16,185,129,0.08)!important;border:1px solid rgba(52,211,153,0.2)!important;color:rgba(240,253,244,0.7)!important;border-radius:999px!important;padding:4px 12px!important;font-size:11px!important;width:auto!important;}
-@media(max-width:768px){.cs-hero{padding:36px 20px;min-height:auto;}.cs-hero-title{font-size:26px;}.cs-hero-stats{position:static;flex-direction:row;transform:none;margin-top:24px;flex-wrap:wrap;gap:8px;}}
+@media(max-width:768px){
+  .cs-hero{padding:36px 20px;min-height:auto;}
+  .cs-hero-title{font-size:26px;}
+  .cs-hero-stats{position:static;flex-direction:row;transform:none;margin-top:24px;flex-wrap:wrap;gap:8px;}
+  .cs-about-hero{padding:20px 24px;}
+  .main .block-container{padding:0 1rem 3rem!important;}
+  .cs-info{margin-bottom:12px;}
+}
 </style>
 """, unsafe_allow_html=True)
 
