@@ -2,7 +2,7 @@ tensorflow
 streamlit
 numpy
 pandas
-opencv-python
+opencv-python-headless
 pillow
 gtts
 deep-translator
