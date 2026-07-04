@@ -1478,11 +1478,59 @@ if page == "📘 About":
         <h2 style="font-size:clamp(22px,4vw,34px);margin:0 0 12px;color:var(--cs-white);font-family:'Clash Display',sans-serif;font-weight:700;letter-spacing:-0.5px;">Intelligence at the root<br>of every harvest.</h2>
         <p style="font-size:13px;color:var(--cs-muted);line-height:1.8;max-width:600px;margin:0;">CropSense AI v3.0 Pro combines a CNN trained on 87,000+ plant images with Google Gemini Vision — enabling detection of <strong>any</strong> plant disease, not just PlantVillage classes. Gemini identifies the plant species, extends diagnoses beyond the CNN's scope, and powers the context-aware farming chatbot.</p>
     </div>""", unsafe_allow_html=True)
+    
+    # ── PROBLEM & SOLUTION ROW ──
+    col_prob, col_sol = st.columns(2, gap="large")
+    with col_prob:
+        st.markdown("""
+        <div class="cs-card cs-fadein" style="height:100%;">
+            <div style="font-size:12px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⚠️ Problem Statement</div>
+            <p style="font-size:13px;color:var(--cs-muted);line-height:1.7;margin:0;">
+                Crop diseases threaten global food security, causing up to 40% loss in agricultural yields annually. Traditional diagnosis relies on physical agronomist visits, which are slow, costly, and inaccessible for smallholder farmers. Delays in identification lead to incorrect chemical spray applications, worsening environmental pollution and soil degradation.
+            </p>
+        </div>""", unsafe_allow_html=True)
+    with col_sol:
+        st.markdown("""
+        <div class="cs-card cs-fadein" style="height:100%;">
+            <div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">💡 Solution (CropSense AI)</div>
+            <p style="font-size:13px;color:var(--cs-muted);line-height:1.7;margin:0;">
+                CropSense AI provides a zero-latency, multi-tier diagnostic system. It leverages a localized, lightweight CNN trained on standard datasets for instantaneous offline predictions, backed by Gemini Vision's cloud intelligence for open-world plant disease detection. Integrated with micro-climate alerts and localized agronomy recommendations, the platform empowers growers to execute targeted crop protection.
+            </p>
+        </div>""", unsafe_allow_html=True)
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ── WORKFLOW & FUTURE SCOPE ROW ──
+    col_work, col_scope = st.columns(2, gap="large")
+    with col_work:
+        st.markdown("""
+        <div class="cs-card cs-fadein" style="height:100%;">
+            <div style="font-size:12px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔄 Platform Workflow</div>
+            <p style="font-size:13px;color:var(--cs-muted);line-height:1.7;margin:0;">
+                <b>1. Image Capture:</b> User uploads a leaf photo.<br>
+                <b>2. Verification:</b> HSV filters and contrast quality checks validate the leaf presence.<br>
+                <b>3. Hybrid Inference:</b> Parallel evaluation triggers local CNN models and Gemini Vision API.<br>
+                <b>4. Advisory Delivery:</b> System compiles NPK formulas, spraying advice, local weather risk limits, PDF report, and translates into 70+ languages.
+            </p>
+        </div>""", unsafe_allow_html=True)
+    with col_scope:
+        st.markdown("""
+        <div class="cs-card cs-fadein" style="height:100%;">
+            <div style="font-size:12px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🚀 Future Scope</div>
+            <p style="font-size:13px;color:var(--cs-muted);line-height:1.7;margin:0;">
+                Future additions will incorporate cellular SMS alert routing for offline smallholders, local edge compilation of MobileNet weights (TFLite) for remote regions, integration with IoT soil moisture and nitrogen probes, and drone-based multispectral aerial scan analytics for large farms.
+            </p>
+        </div>""", unsafe_allow_html=True)
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── TECH STACK & AI ARCHITECTURE ROW ──
     col_a, col_b = st.columns([1.2,1], gap="large")
     with col_a:
-        st.markdown("""<div class="cs-card cs-fadein"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🔬 Technology Stack</div><div><span class="cs-tech-pill">🐍 Python 3.10</span><span class="cs-tech-pill">🧠 TensorFlow 2.x</span><span class="cs-tech-pill">🔮 Gemini 2.5 Flash</span><span class="cs-tech-pill">📷 OpenCV</span><span class="cs-tech-pill">⚡ Streamlit</span><span class="cs-tech-pill">🌐 Deep Translator</span><span class="cs-tech-pill">🔊 gTTS</span><span class="cs-tech-pill">📊 Matplotlib</span><span class="cs-tech-pill">📄 ReportLab</span><span class="cs-tech-pill">🗺️ Grad-CAM</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="cs-card cs-fadein" style="height:100%;"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🔬 Technology Stack</div><div><span class="cs-tech-pill">🐍 Python 3.10</span><span class="cs-tech-pill">🧠 TensorFlow 2.x</span><span class="cs-tech-pill">🔮 Gemini 2.5 Flash</span><span class="cs-tech-pill">📷 OpenCV</span><span class="cs-tech-pill">⚡ Streamlit</span><span class="cs-tech-pill">🌐 Deep Translator</span><span class="cs-tech-pill">🔊 gTTS</span><span class="cs-tech-pill">📊 Matplotlib</span><span class="cs-tech-pill">📄 ReportLab</span><span class="cs-tech-pill">🗺️ Grad-CAM</span></div></div>""", unsafe_allow_html=True)
     with col_b:
         st.markdown("""<div class="cs-card cs-fadein" style="height:100%;"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🤖 AI Architecture</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"><div class="arch-card arch-cnn"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-mint);">CNN</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">PlantVillage</div></div><div class="arch-card arch-gemini"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:inherit;" class="arch-gemini-text">Gemini</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Vision AI</div></div><div class="arch-card arch-any"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-lime);">Any</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Disease</div></div></div></div>""", unsafe_allow_html=True)
+    
     st.markdown("""<div class="cs-section cs-fadein" style="margin-top:24px;"><div class="cs-section-icon green">✨</div><div><p class="cs-section-title">Key Features — v3.0 Pro + Gemini</p></div></div>""", unsafe_allow_html=True)
     feats = [("📸","Dual Input","Camera or file upload"),("🔮","Gemini Vision","Any plant identified"),("🛡️","Smart Validation","Rejects non-leaf images"),("🗺️","Grad-CAM","Visual AI heatmap"),("🏆","Top-3 CNN","Alternative diagnoses"),("🌍","70+ Languages","Multilingual output"),("🔊","Voice Output","TTS readout"),("📈","Severity Score","Mild / Moderate / Severe"),("📄","PDF Export","Full printable report"),("💊","Medicine Detail","Dose, safety, PHI"),("🌱","Fertilizer Detail","NPK, timing, tips"),("💬","AI Chatbot","Gemini farming assistant")]
     cols = st.columns(4)
