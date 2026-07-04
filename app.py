@@ -1128,75 +1128,170 @@ if st.sidebar.button("🚪 Sign Out", use_container_width=True):
 # ═══════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════
-def validate_image_pipeline(img: np.ndarray) -> tuple[bool, str]:
+def gemini_validate_leaf(image_bytes: bytes) -> tuple[bool, str]:
     try:
-        # 1. Check basic structure
+        gemini_model, err = get_gemini_client()
+        if gemini_model is None:
+            return True, "API offline"
+        
+        img = Image.open(io.BytesIO(image_bytes))
+        prompt = """You are an image validation gate for an agricultural diagnostics application.
+Your sole task is to determine whether the uploaded image contains a PLANT LEAF, CROP FOLIAGE, or PLANT LEAF parts (either healthy or diseased).
+
+Strictly exclude/reject:
+- Human faces, selfies, hands, people.
+- Animals (dogs, cats, birds, insects etc. unless the main subject is a leaf and the insect is just a pest on it).
+- Vehicles (cars, trucks, bikes).
+- Buildings, houses, rooms, cityscapes.
+- Documents, books, text prints, white paper sheets, handwriting.
+- Mobile phones, laptops, keyboards, monitors, or screens.
+- Any other random man-made objects, toys, or unrelated indoor scenes.
+
+Strictly accept:
+- Healthy crop leaves or plants.
+- Diseased crop leaves (with spots, rust, blight, mold, holes, or dry edges).
+- Leaves with varying lighting (dark, bright, shaded, direct sunlight).
+- Leaves with different backgrounds (soil, hand holding the stem, table background, greenhouse grid).
+- Leaves captured from any angle or distance.
+
+Respond ONLY with a JSON object:
+{
+  "is_leaf": true or false,
+  "reason": "Brief one-sentence explanation of why it was accepted or rejected."
+}"""
+        response = gemini_model.generate_content([prompt, img])
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+        data = json.loads(text)
+        return bool(data.get("is_leaf", True)), data.get("reason", "No reason provided")
+    except Exception as e:
+        logger.error(f"Gemini leaf validation error: {e}")
+        return True, "Error checking via Gemini"
+
+_mobilenet_model = None
+
+def get_mobilenet_model():
+    global _mobilenet_model
+    if _mobilenet_model is None:
+        try:
+            import tensorflow as tf
+            _mobilenet_model = tf.keras.applications.MobileNetV2(weights="imagenet")
+        except Exception as e:
+            logger.error(f"Failed to load local MobileNetV2 model: {e}")
+    return _mobilenet_model
+
+def local_imagenet_validate(img: np.ndarray) -> tuple[bool, str]:
+    try:
+        model = get_mobilenet_model()
+        if model is None:
+            return True, "Local classifier offline"
+            
+        import tensorflow as tf
+        from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
+        
+        resized = cv2.resize(img, (224, 224))
+        preprocessed = preprocess_input(resized)
+        batch = np.expand_dims(preprocessed, axis=0)
+        
+        preds = model.predict(batch, verbose=0)
+        decoded = decode_predictions(preds, top=5)[0]
+        
+        plant_related_keywords = {
+            "leaf", "buckeye", "fig", "banana", "pineapple", "acorn", "head_of_cabbage", 
+            "broccoli", "cauliflower", "zucchini", "cucumber", "artichoke", "bell_pepper", 
+            "strawberry", "orange", "lemon", "greenhouse", "pot", "potter", "daisy", "cardoon", 
+            "corn", "maize", "ear", "pomegranate", "custard_apple", "tree", "plant", "grape"
+        }
+        
+        non_leaf_keywords = {
+            "notebook", "laptop", "cellular", "phone", "monitor", "screen", "television",
+            "car", "limousine", "cab", "van", "truck", "jeep", "wagon", "sports_car", "convertible",
+            "cat", "dog", "terrier", "spaniel", "retriever", "collie", "beagle", "boxer",
+            "building", "church", "palace", "castle", "monastery", "house", "window",
+            "suit", "cloak", "gown", "t-shirt", "face", "man", "woman", "person", "hand",
+            "packet", "envelope", "book", "comic_book", "web_site", "menu", "paper", "slate"
+        }
+        
+        is_plant = False
+        is_non_plant = False
+        top_name = decoded[0][1].lower()
+        
+        for _, class_name, prob in decoded[:3]:
+            class_name_lower = class_name.lower()
+            if any(k in class_name_lower for k in plant_related_keywords) and prob > 0.05:
+                is_plant = True
+            if any(k in class_name_lower for k in non_leaf_keywords) and prob > 0.20:
+                is_non_plant = True
+                
+        if is_non_plant and not is_plant:
+            return False, f"Invalid Image. Local classifier identified this as '{top_name.replace('_', ' ')}'."
+            
+        return True, "Local classifier verified"
+    except Exception as e:
+        logger.error(f"Local ImageNet validation failed: {e}")
+        return True, "Local validation error"
+
+def validate_image_pipeline(img: np.ndarray, image_bytes: bytes = None) -> tuple[bool, str]:
+    try:
+        # 1. Structural Checks
         if img is None or len(img.shape) != 3 or img.size == 0:
             return False, "Invalid Image. The file is empty, corrupt, or has invalid dimensions."
         
         h, w, c = img.shape
-        
-        # 2. Resolution check (very relaxed)
         if h < 100 or w < 100:
             return False, "Invalid Image. Resolution is too low (minimum 100x100 pixels required)."
             
-        # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        
-        # 3. Blank / Solid Color check
         std_val = np.std(gray)
         if std_val < 8:
             return False, "Invalid Image. The image appears to be a blank or solid-color image."
             
-        # 4. Extreme lighting check (relaxed)
         mean_brightness = np.mean(gray)
         if mean_brightness < 8:
             return False, "Invalid Image. The photo is too dark. Please ensure some lighting is present."
         if mean_brightness > 250:
             return False, "Invalid Image. The photo is completely white or overexposed."
-            
-        # 5. Face detection (Human prevention)
-        # Using Haar Cascade with higher minNeighbors to avoid false positives on leaf veins
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=7, minSize=(60, 60))
-        if len(faces) > 0:
-            return False, "Invalid Image. Human faces detected. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
-            
-        # 6. Leaf color and saturation check (relaxed)
-        # Plant leaves have green, yellow, orange, or brown hues with organic saturation.
-        # Grayscale text documents, white screens, and dark blank spaces have very low saturation.
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        h_channel = hsv[:, :, 0]
-        s_channel = hsv[:, :, 1]
-        v_channel = hsv[:, :, 2]
-        
-        # Leaf colors mask (Hue 0-120: covering red, brown, orange, yellow, green)
-        # We check for pixels that have organic saturation (> 15) and intensity (> 15)
-        organic_mask = (h_channel <= 120) & (s_channel > 15) & (v_channel > 15)
-        organic_ratio = np.sum(organic_mask) / (h * w)
-        
-        if organic_ratio < 0.05:
-            # Check if there's any green at all (sometimes green is in hue 30-90 with lower saturation)
-            green_mask = (h_channel >= 30) & (h_channel <= 90) & (v_channel > 15)
-            green_ratio = np.sum(green_mask) / (h * w)
-            if green_ratio < 0.03:
-                return False, "Invalid Image. The image lacks plant-like foliage colors. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
-            
-        # 7. Document / Text detection check
-        # Text documents have very high edge densities but lack organic shapes.
-        # We check if there's a huge density of straight horizontal/vertical lines (like lines of text)
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, minLineLength=80, maxLineGap=5)
-        if lines is not None and len(lines) > 55:
-            return False, "Invalid Image. Text document or grid pattern detected. Please upload a natural crop leaf photo."
-            
-        return True, "Valid Leaf Image"
     except Exception as e:
-        # Fail-safe: if any library/CV function raises an exception, do not block the user
+        return False, f"Image processing error: {e}"
+
+    # 2. Face Cascade
+    try:
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(45, 45))
+        if len(faces) > 0:
+            return False, "Invalid Image. Human faces detected. Please upload a clear image of a single crop leaf."
+    except Exception:
+        pass
+
+    # 3. Gemini Vision Validation (Online Primary Gate)
+    if st.session_state.get("use_gemini") and st.session_state.get("gemini_ok") and image_bytes:
+        is_leaf_gem, reason = gemini_validate_leaf(image_bytes)
+        if not is_leaf_gem:
+            return False, f"Invalid Image. Please upload a clear image of a crop leaf. ({reason})"
         return True, "Valid Leaf Image"
 
-def is_leaf(img: np.ndarray) -> tuple[bool, str]:
-    return validate_image_pipeline(img)
+    # 4. Local ImageNet Validation (Offline Secondary Gate)
+    is_leaf_local, local_reason = local_imagenet_validate(img)
+    if not is_leaf_local:
+        return False, local_reason
+
+    # 5. Visual Heuristics (Tertiary Gate / Fallback)
+    try:
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        s_channel = hsv[:, :, 1]
+        if np.mean(s_channel) < 10:
+            return False, "Invalid Image. Document or grayscale screen detected. Please upload a natural crop leaf photo."
+    except Exception:
+        pass
+
+    return True, "Valid Leaf Image"
+
+def is_leaf(img: np.ndarray, image_bytes: bytes = None) -> tuple[bool, str]:
+    return validate_image_pipeline(img, image_bytes)
 
 def image_quality_score(img_np: np.ndarray) -> int:
     gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
@@ -1910,7 +2005,8 @@ if page == "🏠 Home":
             analysis_blocked = True
         else:
             img_np = np.array(image)
-            valid_leaf, val_msg = is_leaf(img_np)
+            img_bytes = image_to_bytes(image)
+            valid_leaf, val_msg = is_leaf(img_np, img_bytes)
             if not valid_leaf:
                 st.markdown(f"""<div class="cs-error cs-fadein" style="margin-bottom:12px;"><div class="cs-error-icon">⚠️</div><div><div class="cs-error-title">Invalid Image Detected</div><div class="cs-error-body">{val_msg}</div></div></div>""", unsafe_allow_html=True)
                 analysis_blocked = True
