@@ -1648,61 +1648,101 @@ if page == "🏠 Home":
         </div>
         """, unsafe_allow_html=True)
         
+        # Prepare safe weather display variables to prevent NoneType TypeErrors
+        temp_val = wea.get("temperature")
+        temp_disp = f"{temp_val}°C" if temp_val is not None else "N/A"
+        
+        feels_val = wea.get("feels_like")
+        feels_disp = f"(Feels like {feels_val}°C)" if feels_val is not None else ""
+        
+        hum_val = wea.get("humidity")
+        hum_disp = f"{hum_val}%" if hum_val is not None else "N/A"
+        
+        precip_val = wea.get("precipitation")
+        precip_disp = f"{precip_val} mm" if precip_val is not None else "0.0 mm"
+        
+        chance_val = wea.get("chance_of_rain")
+        chance_disp = f"{chance_val}%" if chance_val is not None else "0%"
+        
+        wind_val = wea.get("wind_speed")
+        wind_dir = wea.get("wind_direction")
+        wind_disp = f"{wind_val} km/h" if wind_val is not None else "N/A"
+        if wind_val is not None and wind_dir is not None:
+            wind_disp = f"{wind_val} km/h ({wind_dir}°)"
+            
+        press_val = wea.get("pressure")
+        press_disp = f"{press_val} hPa" if press_val is not None else "N/A"
+        
+        uv_val = wea.get("uv_index")
+        uv_disp = f"{uv_val}" if uv_val is not None else "N/A"
+        
+        vis_val = wea.get("visibility")
+        if vis_val is not None:
+            try:
+                vis_disp = f"{float(vis_val)/1000:.1f} km"
+            except Exception:
+                vis_disp = "N/A"
+        else:
+            vis_disp = "N/A"
+            
+        aqi_val = wea.get("aqi")
+        aqi_disp = f"{aqi_val}" if aqi_val is not None else "N/A"
+
         # Display Comprehensive Weather Variables
         wea_html = f"""
         <div style="background:var(--cs-glass); border:1px solid var(--cs-border); padding:16px; border-radius:12px; margin-bottom:12px;">
             <div style="font-size:11px; color:var(--cs-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">WEATHER OVERVIEW & LIVE METRICS</div>
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                <span style="font-size:36px;">{wea.get('weather_icon')}</span>
+                <span style="font-size:36px;">{wea.get('weather_icon', '☀️')}</span>
                 <div>
-                    <span style="font-family:'Clash Display',sans-serif; font-size:24px; font-weight:700; color:var(--cs-white); display:block; line-height:1;">{wea.get('temperature')}°C</span>
-                    <span style="font-size:12px; color:var(--cs-muted);">{wea.get('weather_condition')} (Feels like {wea.get('feels_like')}°C)</span>
+                    <span style="font-family:'Clash Display',sans-serif; font-size:24px; font-weight:700; color:var(--cs-white); display:block; line-height:1;">{temp_disp}</span>
+                    <span style="font-size:12px; color:var(--cs-muted);">{wea.get('weather_condition', 'Clear Sky')} {feels_disp}</span>
                 </div>
             </div>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">💧</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('humidity')}%</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{hum_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Humidity</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">🌧️</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('precipitation')} mm</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{precip_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Rainfall</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">☔</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('chance_of_rain')}%</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{chance_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Rain Chance</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">💨</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('wind_speed')} km/h</span>
-                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Wind ({wea.get('wind_direction')}°)</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wind_disp}</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Wind</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">⏲️</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('pressure')} hPa</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{press_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Pressure</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">☀️</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('uv_index')}</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{uv_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">UV Index</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">👁️</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('visibility')/1000:.1f} km</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{vis_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Visibility</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">🍃</span>
-                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('aqi')}</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{aqi_disp}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">AQI (US)</span>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
                     <span style="font-size:14px; display:block;">🌅</span>
-                    <span style="font-size:11px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('sunrise')} / {wea.get('sunset')}</span>
+                    <span style="font-size:11px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('sunrise', '05:30')} / {wea.get('sunset', '18:30')}</span>
                     <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Sun Schedule</span>
                 </div>
             </div>
