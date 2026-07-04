@@ -16,7 +16,7 @@ Additionally, the system provides geolocated weather analysis, localized crop he
 
 ---
 
-## 🧱 Key Features
+## 🧱 Implemented Features
 
 *   **⚡ Dual AI Diagnostics (CNN & Gemini Vision):** Run dual checks using a fast, offline-capable CNN model and fallback Google Gemini Vision API to confirm species and disease details.
 *   **🗺️ Conv attention visualizations (Grad-CAM):** Plots visual heatmaps mapping the exact convolutional activation regions of the CNN model.
@@ -31,7 +31,7 @@ Additionally, the system provides geolocated weather analysis, localized crop he
 
 ---
 
-## 🎨 Technology Stack
+## 🎨 Technologies Used
 | Layer | Tech / Tool / Library | Purpose |
 |---|---|---|
 | **Core Framework** | Streamlit | Python-based interactive web frontend & layout |
@@ -47,7 +47,7 @@ Additionally, the system provides geolocated weather analysis, localized crop he
 
 ---
 
-## 📐 Project Architecture
+## 📐 Project Architecture & Workflow
 
 ```mermaid
 graph TD
@@ -68,6 +68,26 @@ graph TD
     P --> Q[Calculate Agricultural Climate Risk Warnings]
     Q & M & N --> R[Premium Dark Dashboard Display]
 ```
+
+### 🔄 Diagnosis & Chat Workflow
+1.  **Authentication:** The user logs in securely using their registered mobile number, CAPTCHA validation, and a simulated 4-digit OTP.
+2.  **Scan Phase:** The user uploads a leaf image (or captures one via webcam). The system checks if it is a valid leaf and measures its contrast and sharpness.
+3.  **Analytics Phase:** The system extracts GPS coordinates to query the local weather environment. The CNN outputs raw class scores, and Gemini compiles advanced symptoms, chemical active ingredients, organic remedies, and NPK parameters.
+4.  **Interaction Phase:** The agronomist dashboard updates. Users can download PDF reports, listen to vocal readouts, or query the chatbot about preventative farming practices.
+
+---
+
+## 📸 Screenshots Section
+
+Below are visual design mockups representing the premium Dark Mode dashboard interfaces:
+
+| Sign In & Access Control | Analysis Dashboard |
+|:---:|:---:|
+| `![Sign In](https://via.placeholder.com/600x350/0c130c/10b981?text=CropSense+Access+Control+Panel)` | `![Dashboard](https://via.placeholder.com/600x350/0c130c/10b981?text=CropSense+Diagnostics+Dashboard)` |
+
+| Geolocation & Weather Risks | Chatbot & Voice Readout |
+|:---:|:---:|
+| `![Weather](https://via.placeholder.com/600x350/0c130c/10b981?text=IP+Geolocation+%26+Local+Climate+Metrics)` | `![Chatbot](https://via.placeholder.com/600x350/0c130c/10b981?text=Agronomy+Chatbot+%26+Speech+Synthesis)` |
 
 ---
 
@@ -189,45 +209,11 @@ Deploy using a `Dockerfile` or direct python script executor:
 
 ---
 
-## 📖 Usage Guide
-1.  **Access Control:** Launch the app, register a new account with your name, mobile, and email, verify the CAPTCHA sum, and log in with the simulated OTP.
-2.  **Home Page - Image upload:** Select either the Camera widget or File Upload block to load a plant leaf image. 
-3.  **Diagnostic Panel:**
-    *   Inspect validation scores (quality bar) and check if the HSV classifier verified it as a plant leaf.
-    *   Adjust image parameters (brightness, contrast, sharpness) if needed to fix poor lighting.
-    *   Review the CNN prediction alongside Google Gemini Vision's findings.
-    *   Examine the Grad-CAM convolution attention heatmap overlay.
-    *   Review the dynamic Top-3 CNN horizontal bar chart and leaf visual severity indicator dial.
-4.  **Treatment details:** Read NPK ratios, pesticide safety instructions, active ingredients, application methods, and pre-harvest intervals.
-5.  **Multilingual Audio readout:** Choose one of the 70+ languages from the sidebar dropdown list. Select **🔊 Read Aloud Recommendations** to listen to the audio playback.
-6.  **PDF booklet report:** Select **📄 Download Comprehensive PDF Report** to download the geolocated crop diagnostic report.
-7.  **Farming Chatbot:** Click suggestions chips or use browser voice dictation (STT) to ask agronomy questions.
-8.  **Dashboard page:** View crop metrics, total scans, scan activity trend lines, crop category pie charts, and scan logs geographically.
-9.  **History Registry:** Browse past logs, sort records, filter by crop type or severity, sync cloud backups, or permanently delete individual records.
-
----
-
-## 🛠️ Troubleshooting & FAQ
-
-<details>
-<summary><b>Q: The app displays "TF Model Unavailable / FileNotFoundError"?</b></summary>
-Ensure that <code>best_plant_disease_model.keras</code> and <code>class_names.txt</code> are correctly located under the <code>model/</code> directory in the root folder.
-</details>
-
-<details>
-<summary><b>Q: What happens if the Gemini Vision API key is missing or offline?</b></summary>
-The application automatically falls back to its built-in local database module (<code>utils/offline_database.py</code>), which contains complete symptoms, descriptions, and treatment profiles for all 38 PlantVillage classes, ensuring uninterrupted offline utility.
-</details>
-
-<details>
-<summary><b>Q: The browser Dictation STT is not capturing my voice?</b></summary>
-Ensure you are using a browser supporting the Web Speech API (such as Google Chrome, Apple Safari, or Microsoft Edge) and that microphone access permissions are granted to the local port hosting Streamlit.
-</details>
-
-<details>
-<summary><b>Q: CSV files or PDF exports are showing distorted/raw HTML markup?</b></summary>
-The PDF generation engine runs a clean filter function (<code>_safe_text()</code>) to strip raw HTML elements and symbols before writing to the document grid. Keep recommendations clean of custom HTML tags.
-</details>
+## 🚀 Future Roadmap / Improvements
+*   **📡 IoT Moisture Sensors Integration:** Connect and plot local soil pH, moisture, and nitrogen metrics alongside the diagnostic page in real-time.
+*   **📱 Edge Deployment:** Build lightweight TensorFlow Lite (`.tflite`) compile models to enable zero-network classifications on Android and iOS.
+*   **🌾 Expanded Biological Datasets:** Extend model classes to diagnose crop weeds, invasive insect pests, and fruit quality deterioration indicators.
+*   **💬 Twilio SMS Alerts:** Provide SMS-based text recommendation digests for smallholder farmers operating on feature phones.
 
 ---
 
