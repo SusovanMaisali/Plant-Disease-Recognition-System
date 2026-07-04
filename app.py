@@ -835,6 +835,26 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
   .main .block-container{padding:0 1.5rem 3rem!important;}
   .cs-card, .cs-result, .detail-card{padding:20px;}
 }
+.arch-card {
+  text-align:center;
+  border-radius:12px;
+  padding:14px 8px;
+}
+.arch-cnn {
+  background:rgba(16,185,129,0.08);
+  border:1px solid rgba(52,211,153,0.15);
+}
+.arch-gemini {
+  background:rgba(66,133,244,0.08);
+  border:1px solid rgba(66,133,244,0.15);
+}
+.arch-any {
+  background:rgba(163,230,53,0.08);
+  border:1px solid rgba(163,230,53,0.15);
+}
+.arch-gemini-text {
+  color:#93c5fd;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1092,6 +1112,21 @@ if st.session_state.get("light_theme_key", False):
     }
     .cs-divider {
       background: linear-gradient(90deg,transparent,var(--cs-border),transparent) !important;
+    }
+    .arch-cnn {
+      background: #f0fdf4 !important;
+      border: 1px solid #10b981 !important;
+    }
+    .arch-gemini {
+      background: #eff6ff !important;
+      border: 1px solid #3b82f6 !important;
+    }
+    .arch-any {
+      background: #fbfedf !important;
+      border: 1px solid #84cc16 !important;
+    }
+    .arch-gemini-text {
+      color: #1e3a8a !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1610,7 +1645,7 @@ if page == "📘 About":
     with col_a:
         st.markdown("""<div class="cs-card cs-fadein"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🔬 Technology Stack</div><div><span class="cs-tech-pill">🐍 Python 3.10</span><span class="cs-tech-pill">🧠 TensorFlow 2.x</span><span class="cs-tech-pill">🔮 Gemini 2.5 Flash</span><span class="cs-tech-pill">📷 OpenCV</span><span class="cs-tech-pill">⚡ Streamlit</span><span class="cs-tech-pill">🌐 Deep Translator</span><span class="cs-tech-pill">🔊 gTTS</span><span class="cs-tech-pill">📊 Matplotlib</span><span class="cs-tech-pill">📄 ReportLab</span><span class="cs-tech-pill">🗺️ Grad-CAM</span></div></div>""", unsafe_allow_html=True)
     with col_b:
-        st.markdown("""<div class="cs-card cs-fadein" style="height:100%;"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🤖 AI Architecture</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"><div style="text-align:center;background:rgba(16,185,129,0.08);border:1px solid rgba(52,211,153,0.15);border-radius:12px;padding:14px 8px;"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-mint);">CNN</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">PlantVillage</div></div><div style="text-align:center;background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.15);border-radius:12px;padding:14px 8px;"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:#93c5fd;">Gemini</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Vision AI</div></div><div style="text-align:center;background:rgba(163,230,53,0.08);border:1px solid rgba(163,230,53,0.15);border-radius:12px;padding:14px 8px;"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-lime);">Any</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Disease</div></div></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="cs-card cs-fadein" style="height:100%;"><div style="font-size:12px;font-weight:700;color:var(--cs-mint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;">🤖 AI Architecture</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"><div class="arch-card arch-cnn"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-mint);">CNN</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">PlantVillage</div></div><div class="arch-card arch-gemini"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:inherit;" class="arch-gemini-text">Gemini</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Vision AI</div></div><div class="arch-card arch-any"><div style="font-family:'Clash Display',sans-serif;font-size:16px;font-weight:700;color:var(--cs-lime);">Any</div><div style="font-size:10px;color:var(--cs-muted);text-transform:uppercase;">Disease</div></div></div></div>""", unsafe_allow_html=True)
     st.markdown("""<div class="cs-section cs-fadein" style="margin-top:24px;"><div class="cs-section-icon green">✨</div><div><p class="cs-section-title">Key Features — v3.0 Pro + Gemini</p></div></div>""", unsafe_allow_html=True)
     feats = [("📸","Dual Input","Camera or file upload"),("🔮","Gemini Vision","Any plant identified"),("🛡️","Smart Validation","Rejects non-leaf images"),("🗺️","Grad-CAM","Visual AI heatmap"),("🏆","Top-3 CNN","Alternative diagnoses"),("🌍","70+ Languages","Multilingual output"),("🔊","Voice Output","TTS readout"),("📈","Severity Score","Mild / Moderate / Severe"),("📄","PDF Export","Full printable report"),("💊","Medicine Detail","Dose, safety, PHI"),("🌱","Fertilizer Detail","NPK, timing, tips"),("💬","AI Chatbot","Gemini farming assistant")]
     cols = st.columns(4)
