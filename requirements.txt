@@ -9,3 +9,5 @@ deep-translator
 matplotlib
 reportlab
 google-generativeai
+plotly
+requests
