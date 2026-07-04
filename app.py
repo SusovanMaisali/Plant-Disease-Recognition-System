@@ -796,6 +796,31 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
 .top3-bar-wrap{width:80px;height:5px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;}
 .top3-bar{height:100%;border-radius:99px;}
 .cs-fadein{animation:fadeIn 0.6s ease both;}.symptoms-box{background:rgba(255,255,255,0.03);border-left:3px solid var(--cs-sky);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:12px 16px;font-size:13px;color:var(--cs-muted);line-height:1.7;margin:10px 0;}
+/* ── PREMIUM SPINNERS & PROGRESS BARS ── */
+div[data-testid="stSpinner"] {
+  border-radius: var(--radius-md) !important;
+  background: rgba(16, 185, 129, 0.05) !important;
+  border: 1px solid rgba(16, 185, 129, 0.15) !important;
+  padding: 12px 20px !important;
+  box-shadow: var(--shadow-glow) !important;
+  margin: 10px 0 !important;
+}
+div[data-testid="stSpinner"] i {
+  color: var(--cs-jade) !important;
+}
+div[data-testid="stSpinner"] p {
+  color: var(--cs-white) !important;
+  font-weight: 500 !important;
+  margin: 0 !important;
+}
+div[data-testid="stProgress"] > div {
+  background-color: var(--cs-deep) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+div[data-testid="stProgress"] div[role="progressbar"] > div {
+  background: linear-gradient(90deg, var(--cs-emerald), var(--cs-jade)) !important;
+}
 .chip-btn button{background:rgba(16,185,129,0.08)!important;border:1px solid rgba(52,211,153,0.2)!important;color:rgba(240,253,244,0.7)!important;border-radius:999px!important;padding:4px 12px!important;font-size:11px!important;width:auto!important;}
 /* Mobile Portrait & Landscape (up to 768px) */
 @media(max-width:768px){
@@ -854,6 +879,88 @@ h1,h2,h3,h4{color:var(--cs-white)!important;font-family:'Clash Display',sans-ser
 }
 .arch-gemini-text {
   color:#93c5fd;
+}
+/* ── TIMELINE HISTORY LOGS ── */
+.timeline-wrap {
+  position: relative;
+  margin: 20px 0;
+  padding-left: 30px;
+}
+.timeline-wrap::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--cs-border);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 24px;
+}
+.timeline-dot {
+  position: absolute;
+  left: -26px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cs-jade);
+  border: 3px solid var(--cs-void);
+  box-shadow: 0 0 10px var(--cs-jade);
+  z-index: 2;
+}
+.timeline-dot.diseased {
+  background: var(--cs-coral);
+  box-shadow: 0 0 10px var(--cs-coral);
+}
+.timeline-content {
+  background: var(--cs-glass);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  transition: var(--transition);
+}
+.timeline-content:hover {
+  transform: translateX(4px);
+  border-color: var(--cs-jade);
+}
+.timeline-date-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--cs-muted);
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.timeline-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timeline-crop-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cs-white);
+  margin: 0;
+}
+.timeline-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.timeline-detail-chip {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 3px 10px;
+  border-radius: 6px;
+  color: var(--cs-white);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2394,8 +2501,61 @@ if page == "📜 History":
                                 st.error(message)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        # Render the filtered/sorted dataframe
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        
+        # Render Timeline-style history logs
+        st.markdown('<div class="timeline-wrap">', unsafe_allow_html=True)
+        for idx, row in display_df.head(50).iterrows(): # Limit to top 50 for page speed
+            is_healthy = "healthy" in str(row.get("Disease", "")).lower()
+            dot_class = "timeline-dot" if is_healthy else "timeline-dot diseased"
+            
+            # Format display strings
+            plant_name = row.get("Plant", "Unknown Crop")
+            disease_name = row.get("Disease", "Unknown Status")
+            
+            confidence_val = row.get("CNN_Confidence", 0.0)
+            try:
+                if isinstance(confidence_val, str):
+                    confidence_val = float(confidence_val.replace("%", "").strip())
+                confidence_str = f"{confidence_val:.1f}%"
+            except Exception:
+                confidence_str = str(confidence_val)
+                
+            severity = row.get("Severity", "Healthy")
+            date_str = row.get("Date", "")
+            time_str = row.get("Time", "")
+            city_str = row.get("City", "")
+            country_str = row.get("Country", "")
+            temp_str = row.get("Temperature", "")
+            
+            location_info = f"📍 {city_str}, {country_str}" if city_str else "📍 GPS Localized"
+            temp_info = f"· 🌡️ {temp_str}°C" if temp_str else ""
+            
+            # Badge colors based on severity
+            sev_color = "var(--cs-jade)" if is_healthy else "var(--cs-coral)"
+            if severity == "Moderate":
+                sev_color = "var(--cs-amber)"
+            elif severity == "Severe":
+                sev_color = "#ef4444"
+                
+            st.markdown(f"""
+            <div class="timeline-item">
+                <div class="{dot_class}"></div>
+                <div class="timeline-content">
+                    <div class="timeline-date-row">
+                        <span>🗓️ {date_str} {time_str}</span>
+                        <span>{location_info} {temp_info}</span>
+                    </div>
+                    <div class="timeline-title-row">
+                        <h4 class="timeline-crop-title">{plant_name} · <span style="color: {sev_color};">{disease_name}</span></h4>
+                    </div>
+                    <div class="timeline-details">
+                        <div class="timeline-detail-chip">Confidence: <b>{confidence_str}</b></div>
+                        <div class="timeline-detail-chip">Severity: <b style="color: {sev_color};">{severity}</b></div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         # ── DELETION SECTION ──
         st.markdown("""<div class="cs-section" style="margin-top:20px;margin-bottom:10px;"><div class="cs-section-icon rose">🗑️</div><div><p class="cs-section-title">Delete Entry</p></div></div>""", unsafe_allow_html=True)
