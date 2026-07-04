@@ -1128,6 +1128,151 @@ if st.session_state.get("light_theme_key", False):
     .arch-gemini-text {
       color: #1e3a8a !important;
     }
+
+    /* ── AUDIT OVERRIDES FOR HIGH-CONTRAST LIGHT THEME ── */
+    .cs-tech-pill {
+      color: #0f766e !important;
+      background: rgba(15, 118, 110, 0.06) !important;
+      border-color: rgba(15, 118, 110, 0.2) !important;
+    }
+    .chip-warning {
+      color: #991b1b !important;
+      background: #fef2f2 !important;
+      border-color: #fca5a5 !important;
+    }
+    .chip-info {
+      color: #0369a1 !important;
+      background: #f0f9ff !important;
+      border-color: #bae6fd !important;
+    }
+    .chip-btn button {
+      color: #047857 !important;
+      background: #f0fdf4 !important;
+      border-color: #a7f3d0 !important;
+    }
+    .cs-error-title {
+      color: #991b1b !important;
+    }
+    .cs-error-body {
+      color: #7f1d1d !important;
+    }
+    .cs-warn .cs-error-title {
+      color: #9a3412 !important;
+    }
+    .cs-warn .cs-error-body {
+      color: #7c2d12 !important;
+    }
+    .cs-empty-title {
+      color: #6b7280 !important;
+    }
+    .cs-empty-sub {
+      color: #9ca3af !important;
+    }
+    .cs-footer-logo {
+      color: #6b7280 !important;
+    }
+    .cs-footer-sub {
+      color: #9ca3af !important;
+    }
+    .cs-voice-wrap {
+      background: #f0fdfa !important;
+      border-color: #99f6e4 !important;
+    }
+    .cs-voice-label {
+      color: #0d9488 !important;
+    }
+    .tag-desc {
+      color: #0369a1 !important;
+      background: #f0f9ff !important;
+      border-color: #bae6fd !important;
+    }
+    .tag-treat {
+      color: #047857 !important;
+      background: #f0fdf4 !important;
+      border-color: #a7f3d0 !important;
+    }
+    .tag-med {
+      color: #c2410c !important;
+      background: #fff7ed !important;
+      border-color: #ffedd5 !important;
+    }
+    .tag-fert {
+      color: #b45309 !important;
+      background: #fffbeb !important;
+      border-color: #fef3c7 !important;
+    }
+    
+    /* Native Streamlit Element Overrides */
+    div[data-testid="stAlert"] {
+      background-color: var(--cs-deep) !important;
+      border: 1px solid var(--cs-border) !important;
+    }
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] li, div[data-testid="stAlert"] span {
+      color: var(--cs-white) !important;
+    }
+    div[data-testid="stExpander"] {
+      background-color: var(--cs-deep) !important;
+      border: 1px solid var(--cs-border) !important;
+      border-radius: var(--radius-md) !important;
+    }
+    div[data-testid="stExpander"] summary {
+      color: var(--cs-white) !important;
+    }
+    div[data-testid="stExpander"] > div {
+      background-color: var(--cs-deep) !important;
+      color: var(--cs-white) !important;
+    }
+    div[data-testid="stTabBar"] button {
+      color: var(--cs-muted) !important;
+      background-color: transparent !important;
+    }
+    div[data-testid="stTabBar"] button[aria-selected="true"] {
+      color: var(--cs-white) !important;
+      border-bottom-color: var(--cs-mint) !important;
+    }
+    div[data-baseweb="popover"] ul {
+      background-color: var(--cs-deep) !important;
+    }
+    div[data-baseweb="popover"] li {
+      color: var(--cs-white) !important;
+    }
+    div[data-baseweb="popover"] li:hover {
+      background-color: var(--cs-forest) !important;
+      color: var(--cs-white) !important;
+    }
+    div[data-testid="stWidgetLabel"] p {
+      color: var(--cs-white) !important;
+    }
+    div[data-testid="stCaptionContainer"] {
+      color: var(--cs-muted) !important;
+    }
+    table {
+      background-color: var(--cs-deep) !important;
+      color: var(--cs-white) !important;
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    th {
+      background-color: var(--cs-forest) !important;
+      color: var(--cs-white) !important;
+      font-weight: 600 !important;
+      border: 1px solid var(--cs-border) !important;
+      padding: 8px !important;
+    }
+    td {
+      border: 1px solid var(--cs-border) !important;
+      color: var(--cs-white) !important;
+      background-color: var(--cs-deep) !important;
+      padding: 8px !important;
+    }
+    div[data-testid="stDataFrame"] {
+      background-color: var(--cs-deep) !important;
+      color: var(--cs-white) !important;
+    }
+    .stTable {
+      background-color: var(--cs-deep) !important;
+      color: var(--cs-white) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1411,7 +1556,7 @@ def render_gemini_medicine(med: dict):
             <div class="gemini-badge" style="margin-left:auto;margin-bottom:0;">🔮 Gemini</div>
         </div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(6,182,212,0.12);">🧪</div>
-            <div><div class="detail-row-label" style="color:#22d3ee;">Active Ingredient</div>
+            <div><div class="detail-row-label" style="color:var(--cs-sky);">Active Ingredient</div>
             <div class="detail-row-val">{med.get('active_ingredient','N/A')}</div></div></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(16,185,129,0.12);">⚗️</div>
             <div><div class="detail-row-label" style="color:var(--cs-mint);">Dose</div>
@@ -1424,10 +1569,10 @@ def render_gemini_medicine(med: dict):
             <div class="detail-row-val">{med.get('method','N/A')}</div></div></div>
         <div class="detail-divider"></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(239,68,68,0.12);">⏰</div>
-            <div><div class="detail-row-label" style="color:#fca5a5;">Pre-Harvest Interval</div>
+            <div><div class="detail-row-label" style="color:var(--cs-coral);">Pre-Harvest Interval</div>
             <div class="detail-row-val">{med.get('preharvest_interval','N/A')}</div></div></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(239,68,68,0.12);">🛡️</div>
-            <div><div class="detail-row-label" style="color:#fca5a5;">Safety</div>
+            <div><div class="detail-row-label" style="color:var(--cs-coral);">Safety</div>
             <div class="detail-row-val">{med.get('safety','N/A')}</div></div></div>
         <div style="margin-top:4px;"><span class="detail-chip chip-warning">⚠ {med.get('caution','Follow label instructions.')}</span></div>
         {"<div style='margin-top:10px;'><div class='detail-row-label' style='color:var(--cs-muted);margin-bottom:6px;'>Alternatives</div>" + alts_html + "</div>" if alts_html else ""}
@@ -1452,9 +1597,9 @@ def render_gemini_fertilizer(fert: dict):
         <div style="margin-bottom:14px;">
             <div class="detail-row-label" style="color:var(--cs-lime);margin-bottom:8px;">NPK Ratio</div>
             <div class="npk-grid">
-                <div class="npk-box"><span class="npk-val" style="color:#34d399;">{n}</span><span class="npk-lab">N — Nitrogen</span></div>
-                <div class="npk-box"><span class="npk-val" style="color:#fb923c;">{p}</span><span class="npk-lab">P — Phosphorus</span></div>
-                <div class="npk-box"><span class="npk-val" style="color:#fbbf24;">{k}</span><span class="npk-lab">K — Potassium</span></div>
+                <div class="npk-box"><span class="npk-val" style="color:var(--cs-mint);">{n}</span><span class="npk-lab">N — Nitrogen</span></div>
+                <div class="npk-box"><span class="npk-val" style="color:var(--cs-coral);">{p}</span><span class="npk-lab">P — Phosphorus</span></div>
+                <div class="npk-box"><span class="npk-val" style="color:var(--cs-amber);">{k}</span><span class="npk-lab">K — Potassium</span></div>
             </div>
         </div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(16,185,129,0.12);">⚖️</div>
@@ -1464,14 +1609,14 @@ def render_gemini_fertilizer(fert: dict):
             <div><div class="detail-row-label" style="color:var(--cs-amber);">Timing</div>
             <div class="detail-row-val">{fert.get('timing','N/A')}</div></div></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(6,182,212,0.12);">🚜</div>
-            <div><div class="detail-row-label" style="color:#22d3ee;">Method</div>
+            <div><div class="detail-row-label" style="color:var(--cs-sky);">Method</div>
             <div class="detail-row-val">{fert.get('method','N/A')}</div></div></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(163,230,53,0.12);">✅</div>
             <div><div class="detail-row-label" style="color:var(--cs-lime);">Benefits</div>
             <div class="detail-row-val">{fert.get('benefits','N/A')}</div></div></div>
         <div class="detail-divider"></div>
         <div class="detail-row"><div class="detail-row-icon" style="background:rgba(139,92,246,0.12);">➕</div>
-            <div><div class="detail-row-label" style="color:#c4b5fd;">Additional Supplement</div>
+            <div><div class="detail-row-label" style="color:var(--cs-sky);">Additional Supplement</div>
             <div class="detail-row-val">{fert.get('additional_supplement','N/A')}</div></div></div>
         {"<div style='margin-top:12px;'><div class='detail-row-label' style='color:var(--cs-muted);margin-bottom:8px;'>💡 Pro Tips</div>" + tips_html + "</div>" if tips_html else ""}
     </div>""", unsafe_allow_html=True)
