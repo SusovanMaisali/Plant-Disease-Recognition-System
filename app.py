@@ -843,21 +843,21 @@ if st.session_state.get("light_theme_key", False):
     st.markdown("""
     <style>
     :root {
-      --cs-void:#f4fcf6;
-      --cs-deep:#e8f7ec;
-      --cs-forest:#cbf0d5;
-      --cs-emerald:#065f46;
-      --cs-jade:#10b981;
-      --cs-mint:#0f766e;
+      --cs-void:#f8fafc; /* modern clean slate/gray background */
+      --cs-deep:#ffffff; /* pure white cards/sidebar */
+      --cs-forest:#f0fdf4; /* soft mint tint for success */
+      --cs-emerald:#047857; /* deep emerald brand color */
+      --cs-jade:#10b981; /* vibrant success jade */
+      --cs-mint:#059669; /* active mint text */
       --cs-lime:#4d7c0f;
-      --cs-amber:#b45309;
-      --cs-coral:#c2410c;
-      --cs-sky:#0369a1;
-      --cs-white:#0c130c;
-      --cs-muted:rgba(12,19,12,0.65);
-      --cs-border:rgba(16,185,129,0.25);
-      --cs-glass:rgba(0,0,0,0.03);
-      --shadow-glow:0 4px 20px rgba(16,185,129,0.08);
+      --cs-amber:#d97706;
+      --cs-coral:#ea580c;
+      --cs-sky:#0284c7;
+      --cs-white:#0f172a; /* near black text (slate-900) */
+      --cs-muted:#4b5563; /* grey secondary text */
+      --cs-border:#e5e7eb; /* grey-200 clean borders */
+      --cs-glass:#ffffff;
+      --shadow-glow:0 10px 30px rgba(4,120,87,0.04);
     }
     .stApp {
       background: var(--cs-void) !important;
@@ -865,6 +865,10 @@ if st.session_state.get("light_theme_key", False):
     }
     div[data-testid="stSidebar"] {
       background: var(--cs-deep) !important;
+      border-right: 1px solid var(--cs-border) !important;
+    }
+    div[data-testid="stSidebar"] * {
+      color: var(--cs-white) !important;
     }
     .stSelectbox>div>div, .stRadio>div, .stFileUploader>div {
       background: var(--cs-deep) !important;
@@ -872,24 +876,222 @@ if st.session_state.get("light_theme_key", False):
       border-color: var(--cs-border) !important;
     }
     .stTextInput>div>div>input {
-      background: rgba(16,185,129,0.04) !important;
+      background: #ffffff !important;
       color: var(--cs-white) !important;
       border-color: var(--cs-border) !important;
     }
     .chat-bubble-ai {
-      background: rgba(0,0,0,0.03) !important;
+      background: #f9fafb !important;
       border-color: var(--cs-border) !important;
       color: var(--cs-white) !important;
     }
     .top3-row {
-      background: rgba(0,0,0,0.02) !important;
-      border-color: rgba(0,0,0,0.06) !important;
+      background: #ffffff !important;
+      border-color: var(--cs-border) !important;
     }
     .top3-name {
       color: var(--cs-white) !important;
     }
     audio {
       filter: none !important;
+    }
+    
+    /* Clean Cards and Results in Light Mode */
+    .cs-card {
+      background: #ffffff !important;
+      border: 1px solid var(--cs-border) !important;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.02) !important;
+    }
+    .cs-result {
+      background: linear-gradient(135deg, #f0fdf4 0%, #e8f7ec 100%) !important;
+      border: 1px solid #c2f3d6 !important;
+      box-shadow: 0 10px 30px rgba(16,185,129,0.05) !important;
+    }
+    .cs-result.disease {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+      border-color: #ffddd2 !important;
+      box-shadow: 0 10px 30px rgba(239,68,68,0.05) !important;
+    }
+    .cs-info {
+      background: #ffffff !important;
+      border: 1px solid var(--cs-border) !important;
+    }
+    .cs-info-body {
+      color: #374151 !important;
+    }
+    .detail-card {
+      background: #ffffff !important;
+      border: 1px solid var(--cs-border) !important;
+    }
+    .detail-row-val {
+      color: #374151 !important;
+    }
+    .apply-text {
+      color: #374151 !important;
+    }
+    .detail-divider {
+      background: #e5e7eb !important;
+    }
+    .npk-box {
+      background: #f9fafb !important;
+      border: 1px solid var(--cs-border) !important;
+    }
+    .npk-val {
+      color: #0f172a !important;
+    }
+    .symptoms-box {
+      background: #f9fafb !important;
+      border-left-color: var(--cs-sky) !important;
+      color: #4b5563 !important;
+    }
+    .cs-error {
+      background: #fff5f5 !important;
+      border-color: #feb2b2 !important;
+    }
+    .cs-error-title {
+      color: #c53030 !important;
+    }
+    .cs-error-body {
+      color: #9b2c2c !important;
+    }
+    .cs-warn {
+      background: #fffaf0 !important;
+      border-color: #fbd38d !important;
+    }
+    .cs-warn .cs-error-title {
+      color: #c05621 !important;
+    }
+    .cs-warn .cs-error-body {
+      color: #9c4221 !important;
+    }
+    .stButton>button {
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      color: #ffffff !important;
+      border: 1px solid #047857 !important;
+      box-shadow: 0 4px 6px rgba(4,120,87,0.08) !important;
+    }
+    .stButton>button:hover {
+      background: linear-gradient(135deg, #047857, #065f46) !important;
+      box-shadow: 0 6px 12px rgba(4,120,87,0.15) !important;
+    }
+    .chip-btn button {
+      background: #f0fdf4 !important;
+      border: 1px solid #b2f5ea !important;
+      color: #047857 !important;
+    }
+    .cs-hero {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+      border: 1px solid #a5d6a7 !important;
+      box-shadow: 0 4px 20px rgba(76,175,80,0.05) !important;
+    }
+    .cs-hero-title {
+      color: #1b5e20 !important;
+    }
+    .cs-hero-title .accent {
+      color: #2e7d32 !important;
+    }
+    .cs-hero-title .accent2 {
+      color: #388e3c !important;
+    }
+    .cs-hero-sub {
+      color: #374151 !important;
+    }
+    .cs-hero-badge {
+      background: rgba(76,175,80,0.12) !important;
+      border-color: #81c784 !important;
+      color: #2e7d32 !important;
+    }
+    .cs-hero-badge-dot {
+      background: #4caf50 !important;
+      box-shadow: 0 0 8px #4caf50 !important;
+    }
+    .cs-stat-pill {
+      background: #ffffff !important;
+      border-color: #a5d6a7 !important;
+    }
+    .cs-stat-val {
+      color: #2e7d32 !important;
+    }
+    .cs-stat-lab {
+      color: #4b5563 !important;
+    }
+    .sb-logo-name {
+      color: #0f172a !important;
+    }
+    .sb-logo-ver {
+      background: #e8f5e9 !important;
+      border-color: #a5d6a7 !important;
+      color: #2e7d32 !important;
+    }
+    .chat-wrap {
+      background: #ffffff !important;
+      border-color: var(--cs-border) !important;
+    }
+    .chat-bubble-user {
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      color: #ffffff !important;
+    }
+    .cs-tech-pill {
+      background: rgba(16,185,129,0.06) !important;
+      border: 1px solid rgba(16,185,129,0.18) !important;
+      color: #0f766e !important;
+    }
+    .cs-feat {
+      background: #ffffff !important;
+      border: 1px solid var(--cs-border) !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    }
+    .cs-feat:hover {
+      background: #f0fdf4 !important;
+      border-color: #10b981 !important;
+    }
+    .cs-feat-title {
+      color: #0f172a !important;
+    }
+    .cs-metric {
+      background: #ffffff !important;
+      border: 1px solid var(--cs-border) !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    }
+    .cs-metric:hover {
+      border-color: #10b981 !important;
+      background: #f0fdf4 !important;
+    }
+    .cs-empty {
+      background: #ffffff !important;
+      border: 1.5px dashed #d1d5db !important;
+    }
+    .cs-empty-title {
+      color: #9ca3af !important;
+    }
+    .cs-empty-sub {
+      color: #9ca3af !important;
+    }
+    .cs-voice-wrap {
+      background: #f0fdfa !important;
+      border: 1px solid #ccfbf1 !important;
+    }
+    .cs-voice-sub {
+      color: #4b5563 !important;
+    }
+    .cs-about-hero {
+      background: linear-gradient(135deg, #e6fcf0 0%, #ffffff 100%) !important;
+      border-color: #c2f3d6 !important;
+    }
+    .cs-footer {
+      border-top: 1px solid var(--cs-border) !important;
+    }
+    .cs-footer-logo {
+      color: #4b5563 !important;
+    }
+    .cs-footer-sub {
+      color: #6b7280 !important;
+    }
+    .quality-bar {
+      background: #e5e7eb !important;
+    }
+    .cs-divider {
+      background: linear-gradient(90deg,transparent,var(--cs-border),transparent) !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -985,6 +1187,11 @@ page = st.sidebar.radio("Navigate", ["🏠 Home", "📊 Dashboard", "📜 Histor
 st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
 st.sidebar.toggle("☀️ Light Mode", value=False, key="light_theme_key")
 st.sidebar.markdown('<div class="cs-divider" style="margin: 12px 0;"></div>', unsafe_allow_html=True)
+
+# Dynamic Chart Theme Variables
+is_light_theme = st.session_state.get("light_theme_key", False)
+chart_text_color = '#0f172a' if is_light_theme else '#f0fdf4'
+chart_grid_color = 'rgba(15, 23, 42, 0.08)' if is_light_theme else 'rgba(255, 255, 255, 0.05)'
 
 # Expander for Translation Output
 with st.sidebar.expander("🌍 Translate Language", expanded=True):
@@ -1820,7 +2027,7 @@ if page == "🏠 Home":
                         margin=dict(l=10, r=10, t=10, b=10),
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='#f0fdf4', family='Satoshi'),
+                        font=dict(color=chart_text_color, family='Satoshi'),
                         coloraxis_showscale=False
                     )
                     fig_bar.update_yaxes(autorange="reversed")
@@ -1840,13 +2047,13 @@ if page == "🏠 Home":
                         mode = "gauge+number",
                         value = sev_pct,
                         domain = {'x': [0, 1], 'y': [0, 1]},
-                        title = {'text': "Visual Leaf Severity Index (%)", 'font': {'size': 13, 'color': '#f0fdf4'}},
+                        title = {'text': "Visual Leaf Severity Index (%)", 'font': {'size': 13, 'color': chart_text_color}},
                         gauge = {
-                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#f0fdf4"},
+                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': chart_text_color},
                             'bar': {'color': severity_color},
-                            'bgcolor': "rgba(255,255,255,0.05)",
+                            'bgcolor': "rgba(255,255,255,0.05)" if not is_light_theme else "rgba(15,23,42,0.04)",
                             'borderwidth': 1.5,
-                            'bordercolor': "rgba(52,211,153,0.2)",
+                            'bordercolor': "rgba(52,211,153,0.2)" if not is_light_theme else "rgba(16,185,129,0.15)",
                             'steps': [
                                 {'range': [0, 25], 'color': 'rgba(16, 185, 129, 0.15)'},
                                 {'range': [25, 60], 'color': 'rgba(245, 158, 11, 0.15)'},
@@ -1856,7 +2063,7 @@ if page == "🏠 Home":
                     ))
                     fig_gauge.update_layout(
                         paper_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color='#f0fdf4', family='Satoshi'),
+                        font=dict(color=chart_text_color, family='Satoshi'),
                         height=160,
                         margin=dict(l=10, r=10, t=10, b=10)
                     )
@@ -2190,17 +2397,17 @@ if page == "📊 Dashboard":
                     markers=True, color_discrete_sequence=["#34d399"]
                 )
                 fig_scans.update_layout(
-                    title={'text': "📈 Diagnostic Scan Activity over Time", 'font': {'size': 14, 'color': '#f0fdf4'}},
+                    title={'text': "📈 Diagnostic Scan Activity over Time", 'font': {'size': 14, 'color': chart_text_color}},
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(color="#f0fdf4", family="Satoshi"),
+                    font=dict(color=chart_text_color, family="Satoshi"),
                     xaxis_title=None,
                     yaxis_title="Total Scans",
                     height=280,
                     margin=dict(l=10, r=10, t=40, b=10)
                 )
-                fig_scans.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
-                fig_scans.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
+                fig_scans.update_xaxes(showgrid=True, gridcolor=chart_grid_color)
+                fig_scans.update_yaxes(showgrid=True, gridcolor=chart_grid_color)
                 st.plotly_chart(fig_scans, use_container_width=True, config={'displayModeBar': False})
             except Exception as e:
                 st.caption(f"Trend chart unavailable: {e}")
@@ -2215,9 +2422,9 @@ if page == "📊 Dashboard":
                     hole=0.4, color_discrete_sequence=px.colors.sequential.Emerald
                 )
                 fig_pie.update_layout(
-                    title={'text': "🍩 Plant Categories Monitored", 'font': {'size': 14, 'color': '#f0fdf4'}},
+                    title={'text': "🍩 Plant Categories Monitored", 'font': {'size': 14, 'color': chart_text_color}},
                     paper_bgcolor="rgba(0,0,0,0)",
-                    font=dict(color="#f0fdf4", family="Satoshi"),
+                    font=dict(color=chart_text_color, family="Satoshi"),
                     height=280,
                     margin=dict(l=10, r=10, t=40, b=10)
                 )
@@ -2240,10 +2447,10 @@ if page == "📊 Dashboard":
                     color_continuous_scale="redor"
                 )
                 fig_bar.update_layout(
-                    title={'text': "🦠 Prevalence of Leaf Infections", 'font': {'size': 14, 'color': '#f0fdf4'}},
+                    title={'text': "🦠 Prevalence of Leaf Infections", 'font': {'size': 14, 'color': chart_text_color}},
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(color="#f0fdf4", family="Satoshi"),
+                    font=dict(color=chart_text_color, family="Satoshi"),
                     yaxis_title=None,
                     xaxis_title="Scan Counts",
                     coloraxis_showscale=False,
@@ -2251,7 +2458,7 @@ if page == "📊 Dashboard":
                     margin=dict(l=10, r=10, t=40, b=10)
                 )
                 fig_bar.update_yaxes(autorange="reversed")
-                fig_bar.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
+                fig_bar.update_xaxes(showgrid=True, gridcolor=chart_grid_color)
                 st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
             except Exception as e:
                 st.caption(f"Disease chart unavailable: {e}")
@@ -2267,10 +2474,10 @@ if page == "📊 Dashboard":
                     color_discrete_map={"Excellent": "#10b981", "Mild": "#eab308", "Moderate": "#f97316", "Severe": "#ef4444"}
                 )
                 fig_sev.update_layout(
-                    title={'text': "🚨 Diagnosed Severity Distribution", 'font': {'size': 14, 'color': '#f0fdf4'}},
+                    title={'text': "🚨 Diagnosed Severity Distribution", 'font': {'size': 14, 'color': chart_text_color}},
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    font=dict(color="#f0fdf4", family="Satoshi"),
+                    font=dict(color=chart_text_color, family="Satoshi"),
                     xaxis_title=None,
                     yaxis_title="Total Cases",
                     showlegend=False,
