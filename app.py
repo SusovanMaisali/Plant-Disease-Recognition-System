@@ -1127,19 +1127,59 @@ if st.sidebar.button("🚪 Sign Out", use_container_width=True):
 # ═══════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════
-def is_leaf(img: np.ndarray):
+def validate_image_pipeline(img: np.ndarray) -> tuple[bool, str]:
     try:
-        if len(img.shape) != 3: return False, 0.0
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        mask = cv2.inRange(hsv, np.array([25, 20, 20]), np.array([100, 255, 255]))
-        green_ratio = np.sum(mask > 0) / (img.shape[0] * img.shape[1])
-        if green_ratio < 0.05: return False, green_ratio
+        # 1. Shape and structure
+        if img is None or len(img.shape) != 3 or img.size == 0:
+            return False, "Invalid Image. The file is empty, corrupt, or has an invalid dimensions shape format."
+        
+        h, w, c = img.shape
+        
+        # 2. Resolution check
+        if h < 200 or w < 200:
+            return False, "Invalid Image. Resolution is too low (minimum 200x200 pixels required for diagnosis)."
+            
+        # Convert to gray
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        brightness = np.mean(gray)
-        if brightness < 20 or brightness > 245: return False, green_ratio
-        return True, green_ratio
-    except Exception:
-        return False, 0.0
+        
+        # 3. Brightness check
+        mean_brightness = np.mean(gray)
+        if mean_brightness < 22:
+            return False, "Invalid Image. The photo is too dark. Please ensure adequate lighting."
+        if mean_brightness > 243:
+            return False, "Invalid Image. The photo is overexposed (too bright). Avoid direct glare."
+            
+        # 4. Blur check
+        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+        if laplacian_var < 8.0:
+            return False, "Invalid Image. The photo is blurry or out of focus. Please capture a sharp image."
+            
+        # 5. Face detection (Human prevention)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+        if len(faces) > 0:
+            return False, "Invalid Image. Human faces detected. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
+            
+        # 6. Leaf color profiles (Green/Yellow-Brown organic matter)
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        # We support green, yellow, brown, and orange hues (typical healthy/diseased leaf pigments)
+        leaf_mask = cv2.inRange(hsv, np.array([8, 12, 12]), np.array([96, 255, 255]))
+        leaf_ratio = np.sum(leaf_mask > 0) / (h * w)
+        if leaf_ratio < 0.12:
+            return False, "Invalid Image. No plant foliage or leaf-like pigments detected. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
+            
+        # 7. Document / Screen Detection (Text and straight line densities)
+        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=80, minLineLength=60, maxLineGap=8)
+        if lines is not None and len(lines) > 20:
+            return False, "Invalid Image. Man-made geometric structures or text grids detected. Please upload a natural crop leaf photo."
+            
+        return True, "Valid Leaf Image"
+    except Exception as e:
+        return False, f"Invalid Image. Preprocessing validation failed: {str(e)}"
+
+def is_leaf(img: np.ndarray) -> tuple[bool, str]:
+    return validate_image_pipeline(img)
 
 def image_quality_score(img_np: np.ndarray) -> int:
     gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
@@ -1853,9 +1893,9 @@ if page == "🏠 Home":
             analysis_blocked = True
         else:
             img_np = np.array(image)
-            valid_leaf, _ = is_leaf(img_np)
+            valid_leaf, val_msg = is_leaf(img_np)
             if not valid_leaf:
-                st.markdown("""<div class="cs-error cs-fadein"><div class="cs-error-icon">⚠️</div><div><div class="cs-error-title">Invalid Image Detected</div><div class="cs-error-body">This doesn't appear to be a plant leaf. Please upload a clear leaf photo with visible green coloration.</div></div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="cs-error cs-fadein" style="margin-bottom:12px;"><div class="cs-error-icon">⚠️</div><div><div class="cs-error-title">Invalid Image Detected</div><div class="cs-error-body">{val_msg}</div></div></div>""", unsafe_allow_html=True)
                 analysis_blocked = True
             else:
                 # Compute a lightweight hash to detect image changes
