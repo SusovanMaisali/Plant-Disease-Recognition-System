@@ -36,7 +36,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER
 import google.generativeai as genai
-from utils.weather_locator import get_ip_location, get_weather_data, calculate_disease_risk, generate_weather_alerts
+from utils.weather_locator import get_ip_location, get_weather_data, calculate_disease_risk, generate_weather_alerts, reverse_geocode, get_location_suggestions, get_agri_info
 
 
 # ═══════════════════════════════════════════════════
@@ -85,14 +85,18 @@ q_lat = st.query_params.get("gps_lat")
 q_lon = st.query_params.get("gps_lon")
 if q_lat and q_lon:
     try:
-        st.session_state.location["latitude"] = float(q_lat)
-        st.session_state.location["longitude"] = float(q_lon)
-        st.session_state.location["city"] = "GPS Location"
-        st.session_state.location["state"] = "Detected State"
-        st.session_state.location["country"] = "Detected Country"
-        st.session_state.location["status"] = "success"
+        lat_val = float(q_lat)
+        lon_val = float(q_lon)
+        st.session_state.location["latitude"] = lat_val
+        st.session_state.location["longitude"] = lon_val
+        
+        # Reverse geocode to get actual details
+        geo_info = reverse_geocode(lat_val, lon_val)
+        if geo_info:
+            st.session_state.location.update(geo_info)
+        
         # Fetch updated weather for GPS coords
-        st.session_state.weather = get_weather_data(float(q_lat), float(q_lon))
+        st.session_state.weather = get_weather_data(lat_val, lon_val)
         # Clear params to avoid loop
         st.query_params.clear()
     except ValueError:
@@ -1552,8 +1556,9 @@ if page == "🏠 Home":
             st.image(image, caption="Input image", use_container_width=True)
 
         # Geolocation & Weather Dashboard
-        st.markdown("""<div class="cs-section cs-fadein" style="margin-top: 24px;"><div class="cs-section-icon sky">🌍</div><div><p class="cs-section-title">Environment & Geolocation</p><p class="cs-section-sub">Live Weather and Browser Geolocation Detection</p></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="cs-section cs-fadein" style="margin-top: 24px;"><div class="cs-section-icon sky">🌍</div><div><p class="cs-section-title">Environment & Geolocation</p><p class="cs-section-sub">Live Weather and Local Agronomical Advisory</p></div></div>""", unsafe_allow_html=True)
         
+        # GPS Button
         gps_btn_html = """
         <div style="text-align:center; margin-bottom: 12px;">
             <button onclick="detectGPS()" style="
@@ -1581,7 +1586,7 @@ if page == "🏠 Home":
                     parentUrl.searchParams.set("gps_lon", lon);
                     window.parent.location.href = parentUrl.href;
                 }, (err) => {
-                    alert("GPS Access Denied: " + err.message + ". Please input location manually below.");
+                    alert("GPS Access Denied: " + err.message + ". Please search for your location below.");
                 });
             } else {
                 alert("Geolocation is not supported by this browser.");
@@ -1590,77 +1595,156 @@ if page == "🏠 Home":
         </script>
         """
         st.components.v1.html(gps_btn_html, height=45)
-
-        with st.expander("📍 Edit Location Manually", expanded=False):
-            m_city = st.text_input("City", value=st.session_state.location.get("city", ""))
-            m_state = st.text_input("State", value=st.session_state.location.get("state", ""))
-            m_country = st.text_input("Country", value=st.session_state.location.get("country", ""))
-            m_lat = st.number_input("Latitude", value=float(st.session_state.location.get("latitude", 0.0)), format="%.6f")
-            m_lon = st.number_input("Longitude", value=float(st.session_state.location.get("longitude", 0.0)), format="%.6f")
-            
-            if st.button("Apply Manual Location"):
-                st.session_state.location = {
-                    "city": m_city,
-                    "state": m_state,
-                    "country": m_country,
-                    "latitude": m_lat,
-                    "longitude": m_lon,
-                    "status": "success"
-                }
-                st.session_state.weather = get_weather_data(m_lat, m_lon)
-                st.rerun()
+        
+        # Search Autocomplete
+        st.markdown('<p style="font-size: 11px; color: var(--cs-muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🔍 SEARCH & MANUALLY SELECT LOCATION</p>', unsafe_allow_html=True)
+        search_query = st.text_input("Enter city, region, or country", placeholder="e.g. London, Tokyo, Mumbai", key="weather_loc_search", label_visibility="collapsed")
+        
+        if search_query.strip():
+            with st.spinner("Searching matching locations..."):
+                suggestions = get_location_suggestions(search_query)
+            if suggestions:
+                st.markdown("<p style='font-size: 11px; color: var(--cs-muted); margin: 4px 0;'>Matching suggestions (click to select):</p>", unsafe_allow_html=True)
+                for idx_s, s in enumerate(suggestions):
+                    name = s.get("name", "Unknown")
+                    state = s.get("admin1")
+                    country = s.get("country", "")
+                    lat_s = s.get("latitude", 0.0)
+                    lon_s = s.get("longitude", 0.0)
+                    label = f"📍 {name}"
+                    if state:
+                        label += f", {state}"
+                    if country:
+                        label += f" ({country})"
+                        
+                    if st.button(label, key=f"sug_{lat_s}_{lon_s}_{idx_s}", use_container_width=True):
+                        st.session_state.location = {
+                            "city": name,
+                            "district": s.get("admin2") or "Detected District",
+                            "state": state or "Detected State",
+                            "country": country,
+                            "latitude": lat_s,
+                            "longitude": lon_s,
+                            "status": "success"
+                        }
+                        st.session_state.weather = get_weather_data(lat_s, lon_s)
+                        st.rerun()
+            else:
+                st.info("No matching locations found. Try adjusting spelling or using a larger city name.")
 
         loc = st.session_state.location
         wea = st.session_state.weather
         
-        # Display Location Card
+        # Fetch updated weather automatically if coordinates changed
+        # Calculate Risk and Agriculture info
+        agri = get_agri_info(wea.get("temperature", 25.0), wea.get("humidity", 60), wea.get("precipitation", 0.0), wea.get("uv_index", 3.0))
+        
+        # Display Location Details
         st.markdown(f"""
         <div style="background:var(--cs-glass); border:1px solid var(--cs-border); padding:16px; border-radius:12px; margin-bottom:12px;">
-            <div style="font-size:11px; color:var(--cs-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">Current Environment Location</div>
+            <div style="font-size:11px; color:var(--cs-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">ENVIRONMENT LOCATION PROFILE</div>
             <div style="font-family:'Clash Display',sans-serif; font-size:18px; font-weight:700; color:var(--cs-white);">{loc.get('city')}, {loc.get('state')}, {loc.get('country')}</div>
-            <div style="font-size:11px; color:var(--cs-muted); margin-top:2px;">Coordinates: {loc.get('latitude'):.4f}, {loc.get('longitude'):.4f}</div>
+            <div style="font-size:11px; color:var(--cs-muted); margin-top:2px;"><b>District:</b> {loc.get('district', 'N/A')} | <b>Coordinates:</b> {loc.get('latitude'):.4f}, {loc.get('longitude'):.4f}</div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Risk analysis
-        risk = calculate_disease_risk(wea.get("temperature", 25.0), wea.get("humidity", 60))
-        
-        # Weather parameters layout
+        # Display Comprehensive Weather Variables
         wea_html = f"""
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:12px;">
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center;">
-                <span style="font-size:18px;">🌡️</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:15px; font-weight:700; color:var(--cs-white); margin-top:4px;">{wea.get('temperature')}°C</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">Temp</span>
+        <div style="background:var(--cs-glass); border:1px solid var(--cs-border); padding:16px; border-radius:12px; margin-bottom:12px;">
+            <div style="font-size:11px; color:var(--cs-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">WEATHER OVERVIEW & LIVE METRICS</div>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                <span style="font-size:36px;">{wea.get('weather_icon')}</span>
+                <div>
+                    <span style="font-family:'Clash Display',sans-serif; font-size:24px; font-weight:700; color:var(--cs-white); display:block; line-height:1;">{wea.get('temperature')}°C</span>
+                    <span style="font-size:12px; color:var(--cs-muted);">{wea.get('weather_condition')} (Feels like {wea.get('feels_like')}°C)</span>
+                </div>
             </div>
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center;">
-                <span style="font-size:18px;">💧</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:15px; font-weight:700; color:var(--cs-white); margin-top:4px;">{wea.get('humidity')}%</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">Humidity</span>
-            </div>
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center;">
-                <span style="font-size:18px;">🌧️</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:15px; font-weight:700; color:var(--cs-white); margin-top:4px;">{wea.get('precipitation')} mm</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">Rain</span>
-            </div>
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center;">
-                <span style="font-size:18px;">💨</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:15px; font-weight:700; color:var(--cs-white); margin-top:4px;">{wea.get('wind_speed')} km/h</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">Wind</span>
-            </div>
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center;">
-                <span style="font-size:18px;">☀️</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:15px; font-weight:700; color:var(--cs-white); margin-top:4px;">{wea.get('uv_index')}</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">UV Index</span>
-            </div>
-            <div style="background:var(--cs-glass); border:1px solid var(--cs-border); border-radius:10px; padding:10px; text-align:center; border-color:{risk.get('color')}55;">
-                <span style="font-size:18px;">🚨</span>
-                <span style="display:block; font-family:'Clash Display',sans-serif; font-size:14px; font-weight:700; color:{risk.get('color')}; margin-top:4px;">{risk.get('level')}</span>
-                <span style="display:block; font-size:9px; color:var(--cs-muted); text-transform:uppercase; margin-top:2px;">Risk Level</span>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">💧</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('humidity')}%</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Humidity</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">🌧️</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('precipitation')} mm</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Rainfall</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">☔</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('chance_of_rain')}%</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Rain Chance</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">💨</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('wind_speed')} km/h</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Wind ({wea.get('wind_direction')}°)</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">⏲️</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('pressure')} hPa</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Pressure</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">☀️</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('uv_index')}</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">UV Index</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">👁️</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('visibility')/1000:.1f} km</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Visibility</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">🍃</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('aqi')}</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">AQI (US)</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:8px 4px; text-align:center;">
+                    <span style="font-size:14px; display:block;">🌅</span>
+                    <span style="font-size:11px; font-weight:700; color:var(--cs-white); display:block; margin-top:2px;">{wea.get('sunrise')} / {wea.get('sunset')}</span>
+                    <span style="font-size:8px; color:var(--cs-muted); text-transform:uppercase; display:block;">Sun Schedule</span>
+                </div>
             </div>
         </div>
         """
         st.markdown(wea_html, unsafe_allow_html=True)
+        
+        # Display Agriculture Information Dashboard
+        agri_html = f"""
+        <div style="background:var(--cs-glass); border:1px solid var(--cs-border); padding:16px; border-radius:12px; margin-bottom:12px;">
+            <div style="font-size:11px; color:var(--cs-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px;">AGRONOMICAL RISK & ADVISORY</div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Crop Pathogen Risk:</span>
+                <span style="font-size:14px; font-weight:700; color:{agri['risk_color']};">{agri['risk_level']} Risk</span>
+            </div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Seasonal Threat Profile:</span>
+                <span style="font-size:12px; color:var(--cs-white); font-weight:500;">{agri['seasonal_risk']}</span>
+            </div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Recommended Seasonal Crops:</span>
+                <span style="font-size:12px; color:var(--cs-mint); font-weight:600;">{agri['suitable_crops']}</span>
+            </div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Irrigation Advisory:</span>
+                <span style="font-size:12px; color:var(--cs-white);">{agri['irrigation']}</span>
+            </div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Dynamic NPK Recommendation:</span>
+                <span style="font-size:12px; color:var(--cs-white); font-weight:500;">{agri['fertilizer']}</span>
+            </div>
+            <div style="margin-bottom:10px;">
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Chemical Spray Window:</span>
+                <span style="font-size:12px; color:var(--cs-white);">{agri['spray_time']}</span>
+            </div>
+            <div>
+                <span style="font-size:11px; color:var(--cs-muted); display:block;">Farming Advisory:</span>
+                <span style="font-size:12px; color:var(--cs-white); font-style:italic;">"{agri['advisory']}"</span>
+            </div>
+        </div>
+        """
+        st.markdown(agri_html, unsafe_allow_html=True)
         
         alerts = generate_weather_alerts(wea)
         for alert in alerts:
