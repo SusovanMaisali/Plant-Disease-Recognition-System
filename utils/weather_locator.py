@@ -40,7 +40,7 @@ def reverse_geocode(lat: float, lon: float) -> dict:
             data = res.json()
             address = data.get("address", {})
             city = address.get("city") or address.get("town") or address.get("village") or address.get("suburb") or "Unknown City"
-            district = address.get("county") or address.get("district") or "Unknown District"
+            district = address.get("state_district") or address.get("county") or address.get("district") or address.get("city_district") or "Unknown District"
             state = address.get("state") or address.get("region") or "Unknown State"
             country = address.get("country") or "Unknown Country"
             return {

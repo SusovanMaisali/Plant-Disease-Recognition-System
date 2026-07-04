@@ -97,8 +97,9 @@ if q_lat and q_lon:
         
         # Fetch updated weather for GPS coords
         st.session_state.weather = get_weather_data(lat_val, lon_val)
-        # Clear params to avoid loop
+        # Clear params to avoid loop and force rerun
         st.query_params.clear()
+        st.rerun()
     except ValueError:
         pass
 
@@ -1129,54 +1130,70 @@ if st.sidebar.button("🚪 Sign Out", use_container_width=True):
 # ═══════════════════════════════════════════════════
 def validate_image_pipeline(img: np.ndarray) -> tuple[bool, str]:
     try:
-        # 1. Shape and structure
+        # 1. Check basic structure
         if img is None or len(img.shape) != 3 or img.size == 0:
-            return False, "Invalid Image. The file is empty, corrupt, or has an invalid dimensions shape format."
+            return False, "Invalid Image. The file is empty, corrupt, or has invalid dimensions."
         
         h, w, c = img.shape
         
-        # 2. Resolution check
-        if h < 200 or w < 200:
-            return False, "Invalid Image. Resolution is too low (minimum 200x200 pixels required for diagnosis)."
+        # 2. Resolution check (very relaxed)
+        if h < 100 or w < 100:
+            return False, "Invalid Image. Resolution is too low (minimum 100x100 pixels required)."
             
-        # Convert to gray
+        # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         
-        # 3. Brightness check
-        mean_brightness = np.mean(gray)
-        if mean_brightness < 22:
-            return False, "Invalid Image. The photo is too dark. Please ensure adequate lighting."
-        if mean_brightness > 243:
-            return False, "Invalid Image. The photo is overexposed (too bright). Avoid direct glare."
+        # 3. Blank / Solid Color check
+        std_val = np.std(gray)
+        if std_val < 8:
+            return False, "Invalid Image. The image appears to be a blank or solid-color image."
             
-        # 4. Blur check
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-        if laplacian_var < 8.0:
-            return False, "Invalid Image. The photo is blurry or out of focus. Please capture a sharp image."
+        # 4. Extreme lighting check (relaxed)
+        mean_brightness = np.mean(gray)
+        if mean_brightness < 8:
+            return False, "Invalid Image. The photo is too dark. Please ensure some lighting is present."
+        if mean_brightness > 250:
+            return False, "Invalid Image. The photo is completely white or overexposed."
             
         # 5. Face detection (Human prevention)
+        # Using Haar Cascade with higher minNeighbors to avoid false positives on leaf veins
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=7, minSize=(60, 60))
         if len(faces) > 0:
             return False, "Invalid Image. Human faces detected. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
             
-        # 6. Leaf color profiles (Green/Yellow-Brown organic matter)
+        # 6. Leaf color and saturation check (relaxed)
+        # Plant leaves have green, yellow, orange, or brown hues with organic saturation.
+        # Grayscale text documents, white screens, and dark blank spaces have very low saturation.
         hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        # We support green, yellow, brown, and orange hues (typical healthy/diseased leaf pigments)
-        leaf_mask = cv2.inRange(hsv, np.array([8, 12, 12]), np.array([96, 255, 255]))
-        leaf_ratio = np.sum(leaf_mask > 0) / (h * w)
-        if leaf_ratio < 0.12:
-            return False, "Invalid Image. No plant foliage or leaf-like pigments detected. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
+        h_channel = hsv[:, :, 0]
+        s_channel = hsv[:, :, 1]
+        v_channel = hsv[:, :, 2]
+        
+        # Leaf colors mask (Hue 0-120: covering red, brown, orange, yellow, green)
+        # We check for pixels that have organic saturation (> 15) and intensity (> 15)
+        organic_mask = (h_channel <= 120) & (s_channel > 15) & (v_channel > 15)
+        organic_ratio = np.sum(organic_mask) / (h * w)
+        
+        if organic_ratio < 0.05:
+            # Check if there's any green at all (sometimes green is in hue 30-90 with lower saturation)
+            green_mask = (h_channel >= 30) & (h_channel <= 90) & (v_channel > 15)
+            green_ratio = np.sum(green_mask) / (h * w)
+            if green_ratio < 0.03:
+                return False, "Invalid Image. The image lacks plant-like foliage colors. Please upload a clear image of a single crop leaf. Human faces, animals, objects, documents, or unrelated images are not supported."
             
-        # 7. Document / Screen Detection (Text and straight line densities)
+        # 7. Document / Text detection check
+        # Text documents have very high edge densities but lack organic shapes.
+        # We check if there's a huge density of straight horizontal/vertical lines (like lines of text)
         edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=80, minLineLength=60, maxLineGap=8)
-        if lines is not None and len(lines) > 20:
-            return False, "Invalid Image. Man-made geometric structures or text grids detected. Please upload a natural crop leaf photo."
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, minLineLength=80, maxLineGap=5)
+        if lines is not None and len(lines) > 55:
+            return False, "Invalid Image. Text document or grid pattern detected. Please upload a natural crop leaf photo."
             
         return True, "Valid Leaf Image"
     except Exception as e:
-        return False, f"Invalid Image. Preprocessing validation failed: {str(e)}"
+        # Fail-safe: if any library/CV function raises an exception, do not block the user
+        return True, "Valid Leaf Image"
 
 def is_leaf(img: np.ndarray) -> tuple[bool, str]:
     return validate_image_pipeline(img)
