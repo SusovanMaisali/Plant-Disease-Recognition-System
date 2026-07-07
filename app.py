@@ -1184,11 +1184,19 @@ def get_mobilenet_model():
             logger.error(f"Failed to load local MobileNetV2 model: {e}")
     return _mobilenet_model
 
-def local_imagenet_validate(img: np.ndarray) -> tuple[bool, str]:
+def has_word_match(phrase: str, keywords: set[str]) -> bool:
+    import re
+    for k in keywords:
+        pattern = r'\b' + re.escape(k) + r'\b'
+        if re.search(pattern, phrase):
+            return True
+    return False
+
+def local_imagenet_validate(img: np.ndarray) -> tuple[bool, str, bool]:
     try:
         model = get_mobilenet_model()
         if model is None:
-            return True, "Local classifier offline"
+            return True, "Local classifier offline", True
             
         import tensorflow as tf
         from tensorflow.keras.applications.mobilenet_v2 import preprocess_input, decode_predictions
@@ -1204,87 +1212,100 @@ def local_imagenet_validate(img: np.ndarray) -> tuple[bool, str]:
             "leaf", "buckeye", "fig", "banana", "pineapple", "acorn", "head_of_cabbage", 
             "broccoli", "cauliflower", "zucchini", "cucumber", "artichoke", "bell_pepper", 
             "strawberry", "orange", "lemon", "greenhouse", "pot", "potter", "daisy", "cardoon", 
-            "corn", "maize", "ear", "pomegranate", "custard_apple", "tree", "plant", "grape"
+            "corn", "maize", "ear", "pomegranate", "custard_apple", "tree", "plant", "grape",
+            "vein", "foliage", "sprout", "bud", "stem", "stalk", "branch", "root", "herb", "grass",
+            "fern", "moss", "clover", "cabbage", "squash", "pumpkin", "dahlia", "petunia", 
+            "croton", "ivy", "lupine", "anemone", "dandelion", "aster", "chrysanthemum",
+            "sunflower", "orchid", "rose", "tulip", "wildflower", "poppy", "carnation", "lily",
+            "hyacinth", "iris", "daffodil", "crocus", "buttercup", "violet", "pansy", "forget-me-not",
+            "cabbage_butterfly", "monarch", "sulphur_butterfly", "mantis", "grasshopper", "cricket",
+            "walking_stick", "cockroach", "katydid", "weevil", "slug", "snail", "spider", "garden_spider",
+            "leafhopper", "cicada", "stinkhorn", "gyromitra", "morchella", "earthstar", "bolete", 
+            "hen-of-the-woods", "mushroom", "fungus", "lichens", "velvet", "trilobite"
         }
         
         non_leaf_keywords = {
-            "notebook", "laptop", "cellular", "phone", "monitor", "screen", "television",
-            "car", "limousine", "cab", "van", "truck", "jeep", "wagon", "sports_car", "convertible",
-            "cat", "dog", "terrier", "spaniel", "retriever", "collie", "beagle", "boxer",
-            "building", "church", "palace", "castle", "monastery", "house", "window",
-            "suit", "cloak", "gown", "t-shirt", "face", "man", "woman", "person", "hand",
-            "packet", "envelope", "book", "comic_book", "web_site", "menu", "paper", "slate"
+            "face", "selfie", "groom", "wig", "mask", "t-shirt", "jersey", "brassiere", "gown", 
+            "academic_gown", "cardigan", "bow_tie", "hair_slide", "sunglasses", "sunglass", 
+            "swimming_trunks", "bikini", "suit", "trench_coat", "poncho", "scarf", 
+            "oxygen_mask", "stethoscope", "syringe", "man", "woman", "person", "audience",
+            "phone", "cellular", "telephone", "ipod", "computer", "laptop", "notebook", 
+            "screen", "monitor", "television", "modem", "keyboard", "mouse", "joystick",
+            "car", "limousine", "cab", "van", "truck", "jeep", "wagon", "sports_car", 
+            "convertible", "racer", "pickup", "minivan", "ambulance", "fire_engine", 
+            "wheelbarrow", "moving_van", "police_van", "recreational_vehicle", "garbage_truck",
+            "tow_truck", "trailer_truck", "passenger_car", "bicycle", "motorcycle", "scooter",
+            "book", "book_jacket", "comic_book", "binder", "envelope", 
+            "packet", "paper", "slate", "document", "menu", "web_site", "folder",
+            "building", "palace", "church", "monastery", "castle", "library", "house", 
+            "window", "dome", "mosque", "planetarium", "lighthouse", "pier", "dock", 
+            "bridge", "viaduct", "triumphal_arch", "skyscraper", "structure", "wall",
+            "roof", "ceiling", "floor", "brick", "stone", "concrete", "pavement",
+            "furniture", "chair", "table", "desk", "bed", "sofa", "couch", "cabinet",
+            "shelf", "cupboard", "plate", "cup", "mug", "bowl", "fork", "knife", "spoon",
+            "bottle", "can", "box", "bag", "purse", "wallet", "key", "coin", "pen", "pencil"
         }
         
         is_plant = False
         is_non_plant = False
         top_name = decoded[0][1].lower()
+        top_prob = decoded[0][2]
         
-        for _, class_name, prob in decoded[:3]:
-            class_name_lower = class_name.lower()
-            if any(k in class_name_lower for k in plant_related_keywords) and prob > 0.05:
-                is_plant = True
-            if any(k in class_name_lower for k in non_leaf_keywords) and prob > 0.20:
-                is_non_plant = True
-                
-        if is_non_plant and not is_plant:
-            return False, f"Invalid Image. Local classifier identified this as '{top_name.replace('_', ' ')}'."
+        for _, class_name, prob in decoded[:5]:
+            class_name_lower = class_name.lower().replace("_", " ")
+            has_non_leaf_kw = has_word_match(class_name_lower, non_leaf_keywords)
+            has_plant_kw = has_word_match(class_name_lower, plant_related_keywords)
             
-        return True, "Local classifier verified"
+            if has_non_leaf_kw and not has_plant_kw:
+                if prob > 0.15 or class_name_lower == top_name.replace("_", " "):
+                    is_non_plant = True
+            if has_plant_kw:
+                if prob > 0.02:
+                    is_plant = True
+                    
+        # If it has strong non-plant evidence and no plant evidence, reject it.
+        # Also, if top prediction is highly confident (> 0.35) non-plant and doesn't match plant keywords, reject it.
+        if is_non_plant and not is_plant:
+            return False, "Not a plant leaf", is_plant
+            
+        top_name_clean = top_name.replace("_", " ")
+        if has_word_match(top_name_clean, non_leaf_keywords) and not has_word_match(top_name_clean, plant_related_keywords) and decoded[0][2] > 0.35:
+            return False, "Not a plant leaf", is_plant
+            
+        return True, "Local classifier verified", is_plant
     except Exception as e:
         logger.error(f"Local ImageNet validation failed: {e}")
-        return True, "Local validation error"
+        return True, "Local validation error", True
 
 def validate_image_pipeline(img: np.ndarray, image_bytes: bytes = None) -> tuple[bool, str]:
+    invalid_msg = "Invalid Image. Please upload a clear image of a supported crop leaf."
     try:
         # 1. Structural Checks
         if img is None or len(img.shape) != 3 or img.size == 0:
-            return False, "Invalid Image. The file is empty, corrupt, or has invalid dimensions."
+            return False, invalid_msg
         
         h, w, c = img.shape
-        if h < 100 or w < 100:
-            return False, "Invalid Image. Resolution is too low (minimum 100x100 pixels required)."
+        if h < 50 or w < 50:
+            return False, invalid_msg
             
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         std_val = np.std(gray)
-        if std_val < 8:
-            return False, "Invalid Image. The image appears to be a blank or solid-color image."
-            
-        mean_brightness = np.mean(gray)
-        if mean_brightness < 8:
-            return False, "Invalid Image. The photo is too dark. Please ensure some lighting is present."
-        if mean_brightness > 250:
-            return False, "Invalid Image. The photo is completely white or overexposed."
+        if std_val < 2:
+            return False, invalid_msg
     except Exception as e:
-        return False, f"Image processing error: {e}"
+        return False, invalid_msg
 
-    # 2. Face Cascade
+    # 3. Local ImageNet Validation (Offline Gate - Gemini is now optional and only used for additional explanations)
+    is_leaf_local, local_reason, is_plant = local_imagenet_validate(img)
+    if not is_leaf_local:
+        return False, invalid_msg
+
+    # 2. Face Cascade (with is_plant bypass to prevent false positives on leaves)
     try:
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(45, 45))
-        if len(faces) > 0:
-            return False, "Invalid Image. Human faces detected. Please upload a clear image of a single crop leaf."
-    except Exception:
-        pass
-
-    # 3. Gemini Vision Validation (Online Primary Gate)
-    if st.session_state.get("use_gemini") and st.session_state.get("gemini_ok") and image_bytes:
-        is_leaf_gem, reason = gemini_validate_leaf(image_bytes)
-        if not is_leaf_gem:
-            return False, f"Invalid Image. Please upload a clear image of a crop leaf. ({reason})"
-        return True, "Valid Leaf Image"
-
-    # 4. Local ImageNet Validation (Offline Secondary Gate)
-    is_leaf_local, local_reason = local_imagenet_validate(img)
-    if not is_leaf_local:
-        return False, local_reason
-
-    # 5. Visual Heuristics (Tertiary Gate / Fallback)
-    try:
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        s_channel = hsv[:, :, 1]
-        if np.mean(s_channel) < 10:
-            return False, "Invalid Image. Document or grayscale screen detected. Please upload a natural crop leaf photo."
+        if len(faces) > 0 and not is_plant:
+            return False, invalid_msg
     except Exception:
         pass
 
@@ -2100,6 +2121,10 @@ if page == "🏠 Home":
                     description   = translate_text("Consult local agricultural extension for detailed diagnosis.", lang_code)
                     treatment     = translate_text("Apply recommended fungicide. Consult agronomist.", lang_code)
                     prevention    = ""
+
+                # Overwrite final_disease display if healthy
+                if is_healthy:
+                    final_disease = "Healthy Leaf"
 
                 severity_label, severity_color, severity_icon = get_severity(
                     cnn_confidence if cnn_confidence > 0 else 75, is_healthy)
