@@ -33,11 +33,15 @@ logger = logging.getLogger("CropSenseAI-Backend")
 
 app = FastAPI(title="CropSense AI API", version="3.0 Pro")
 
-# Enable CORS for local development
+# Enable CORS
+allowed_origins_str = os.environ.get("ALLOWED_ORIGINS", "*")
+allowed_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
+allow_creds = False if "*" in allowed_origins else True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )

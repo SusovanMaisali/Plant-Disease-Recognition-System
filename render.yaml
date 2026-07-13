@@ -1,12 +1,28 @@
 services:
+  # 1. FastAPI Python Web Service (Backend)
   - type: web
-    name: cropsense-ai
+    name: cropsense-ai-backend
     plan: free
     env: python
-    buildCommand: cd frontend && npm install && npm run build && cd ../backend && pip install --no-cache-dir -r requirements.txt
+    buildCommand: cd backend && pip install --no-cache-dir -r requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.12
       - key: GEMINI_API_KEY
         sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+  # 2. React Static Site (Frontend)
+  - type: static
+    name: cropsense-ai-frontend
+    plan: free
+    publishPath: frontend/dist
+    buildCommand: cd frontend && npm install && npm run build
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: cropsense-ai-backend
+          property: host

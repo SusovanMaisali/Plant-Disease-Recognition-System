@@ -64,6 +64,15 @@ const formatCoord = (val, dec = 2) => {
   return isNaN(num) ? '0.00' : num.toFixed(dec);
 };
 
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+  }
+  return '';
+};
+
+const API_BASE = getApiBase();
+
 export default function App() {
   // Theme & Auth state
   const [darkMode, setDarkMode] = useState(() => {
@@ -148,7 +157,7 @@ export default function App() {
   // Load CAPTCHA
   const fetchCaptcha = async () => {
     try {
-      const res = await fetch('/api/auth/captcha');
+      const res = await fetch(`${API_BASE}/api/auth/captcha`);
       const data = await res.json();
       setCaptcha(data);
     } catch (e) {
@@ -186,7 +195,7 @@ export default function App() {
       if (coords) {
         url += `?lat=${coords.latitude}&lon=${coords.longitude}`;
       }
-      const res = await fetch(url);
+      const res = await fetch(`${API_BASE}${url}`);
       const data = await res.json();
       setWeather(data);
       if (data.location) {
@@ -206,7 +215,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch(`/api/weather/suggest?query=${encodeURIComponent(val)}`);
+      const res = await fetch(`${API_BASE}/api/weather/suggest?query=${encodeURIComponent(val)}`);
       const data = await res.json();
       setLocationSuggestions(data.suggestions || []);
     } catch (e) {
@@ -245,7 +254,7 @@ export default function App() {
   const fetchHistory = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/history?mobile=${user.mobile}`);
+      const res = await fetch(`${API_BASE}/api/history?mobile=${user.mobile}`);
       const data = await res.json();
       setHistory(data.history || []);
     } catch (e) {
@@ -263,7 +272,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/send-otp', {
+      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile: authForm.mobile })
@@ -284,7 +293,7 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile: authForm.mobile, otp: authForm.otp })
@@ -310,7 +319,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetch(`${API_BASE}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -415,7 +424,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/diagnose', {
+      const res = await fetch(`${API_BASE}/api/diagnose`, {
         method: 'POST',
         body: formData
       });
@@ -447,7 +456,7 @@ export default function App() {
     if (!messageText) setChatInput('');
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -511,7 +520,7 @@ export default function App() {
     const voiceText = `Plant identified: ${translations.plant_name || diagResult.diagnosis.plant_name}. Disease: ${translations.disease_name || diagResult.diagnosis.disease_name}. Severity: ${diagResult.diagnosis.severity}. Recommendation: ${recText.slice(0, 150)}.`;
 
     try {
-      const res = await fetch('/api/generate-tts', {
+      const res = await fetch(`${API_BASE}/api/generate-tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: voiceText, lang: lang })
@@ -533,7 +542,7 @@ export default function App() {
   const downloadPdf = async () => {
     if (!diagResult) return;
     try {
-      const res = await fetch('/api/generate-pdf', {
+      const res = await fetch(`${API_BASE}/api/generate-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -564,7 +573,7 @@ export default function App() {
     setEmailLoading(true);
     setEmailMessage('');
     try {
-      const res = await fetch('/api/history/email', {
+      const res = await fetch(`${API_BASE}/api/history/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -614,7 +623,7 @@ export default function App() {
   // Delete history item
   const handleDeleteHistory = async (item) => {
     try {
-      const res = await fetch('/api/history/delete', {
+      const res = await fetch(`${API_BASE}/api/history/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -652,7 +661,7 @@ export default function App() {
     for (const [key, val] of Object.entries(keysToTranslate)) {
       if (!val) continue;
       try {
-        const res = await fetch('/api/translate', {
+        const res = await fetch(`${API_BASE}/api/translate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: val, target: lang })
