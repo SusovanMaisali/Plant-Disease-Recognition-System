@@ -1388,7 +1388,28 @@ def _safe_text(t) -> str:
 # ═══════════════════════════════════════════════════
 @st.cache_resource
 def load_ai_model():
+    # Dynamic patch to support loading Keras 3 models in Keras 2 environments
     try:
+        import tensorflow as tf
+        if hasattr(tf.keras.layers.InputLayer, 'from_config'):
+            original_from_config = tf.keras.layers.InputLayer.from_config
+
+            @classmethod
+            def patched_from_config(cls, config):
+                # Keras 3 uses 'batch_shape' but Keras 2 uses 'batch_input_shape'
+                if 'batch_shape' in config and 'batch_input_shape' not in config:
+                    config['batch_input_shape'] = config.pop('batch_shape')
+                # Keras 2 does not support 'optional' parameter
+                if 'optional' in config:
+                    config.pop('optional')
+                return original_from_config(config)
+
+            tf.keras.layers.InputLayer.from_config = patched_from_config
+    except Exception:
+        pass
+
+    try:
+        import tensorflow as tf
         return tf.keras.models.load_model("model/best_plant_disease_model.keras"), None
     except Exception as e:
         return None, str(e)
