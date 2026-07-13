@@ -5,7 +5,7 @@ import {
   Download, Trash2, Globe, Settings, ShieldCheck, ChevronRight,
   TrendingUp, Sparkles, Send, Mic, Sun, Moon, FileText, CheckCircle,
   BarChart2, HelpCircle, Thermometer, Droplets, CloudRain, Wind, 
-  Compass, Gauge, Eye, Sunrise, Sunset, Activity
+  Compass, Gauge, Eye, Sunrise, Sunset, Activity, RefreshCw
 } from 'lucide-react';
 
 const SUPPORTED_LANGUAGES = [
@@ -42,7 +42,7 @@ const SUPPORTED_LANGUAGES = [
   { code: 'kn', flag: '🇮🇳', name: 'Kannada (ಕನ್ನಡ)' },
   { code: 'ml', flag: '🇮🇳', name: 'Malayalam (മലയാളം)' },
   { code: 'gu', flag: '🇮🇳', name: 'Gujarati (ગુજરાતી)' },
-  { code: 'mr', flag: '🇮🇳', name: 'Marathi (मराठी)' },
+  { code: 'mr', flag: '🇮🇳', name: 'Marathi (मਰਾठी)' },
   { code: 'pa', flag: '🇮🇳', name: 'Punjabi (ਪੰਜਾਬੀ)' },
   { code: 'ro', flag: '🇷🇴', name: 'Romanian (Română)' },
   { code: 'hu', flag: '🇭🇺', name: 'Hungarian (Magyar)' },
@@ -51,6 +51,18 @@ const SUPPORTED_LANGUAGES = [
   { code: 'si', flag: '🇱🇰', name: 'Sinhala (සිංහල)' },
   { code: 'sw', flag: '🇰🇪', name: 'Swahili (Kiswahili)' }
 ];
+
+// Helper functions for safe UI numbers formatting
+const formatNum = (val, dec = 0) => {
+  const num = Number(val);
+  return isNaN(num) ? '0' : num.toFixed(dec);
+};
+
+const formatCoord = (val, dec = 2) => {
+  if (val === '' || val === null || val === undefined) return '0.00';
+  const num = Number(val);
+  return isNaN(num) ? '0.00' : num.toFixed(dec);
+};
 
 export default function App() {
   // Theme & Auth state
@@ -1137,7 +1149,7 @@ export default function App() {
                       <div className="flex justify-between items-center text-xs border-t pt-3 border-cs-border/40">
                         <span className="text-cs-muted font-semibold">Local Pathogen Threat</span>
                         <span className={`font-bold px-2 py-0.5 rounded ${weather.risk_pct > 65 ? 'bg-red-500/10 text-red-400' : 'bg-cs-mint/10 text-cs-mint'}`}>
-                          {weather.risk_pct.toFixed(0)}%
+                          {formatNum(weather.risk_pct, 0)}%
                         </span>
                       </div>
                     </div>
@@ -1284,7 +1296,7 @@ export default function App() {
                   <div className={`p-4 rounded-xl border ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
                     <span className="text-[10px] text-cs-muted block mb-0.5">CNN Conf. Score</span>
                     <span className={`text-sm font-bold ${darkMode ? 'text-cs-mint' : 'text-emerald-600'}`}>
-                      {diagResult.cnn_confidence > 0 ? `${diagResult.cnn_confidence.toFixed(1)}%` : 'Gemini Fallback'}
+                      {diagResult.cnn_confidence > 0 ? `${formatNum(diagResult.cnn_confidence, 1)}%` : 'Gemini Fallback'}
                     </span>
                   </div>
                   <div className={`p-4 rounded-xl border ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
@@ -1412,7 +1424,7 @@ export default function App() {
                           <div key={i} className="space-y-1">
                             <div className="flex justify-between text-xs font-semibold">
                               <span className={darkMode ? 'text-white' : 'text-slate-800'}>{c.name}</span>
-                              <span className="text-cs-muted">{c.count} scans ({pct.toFixed(0)}%)</span>
+                              <span className="text-cs-muted">{c.count} scans ({formatNum(pct, 0)}%)</span>
                             </div>
                             <div className={`w-full h-2 rounded-full overflow-hidden border ${darkMode ? 'bg-cs-cardlight border-cs-border' : 'bg-slate-100 border-slate-200'}`}>
                               <div className="bg-cs-mint h-full rounded-full" style={{ width: `${pct}%` }}></div>
@@ -1481,7 +1493,7 @@ export default function App() {
                         <MapPin size={16} className={darkMode ? 'text-cs-mint' : 'text-emerald-600'} />
                         <div>
                           <p className="font-bold truncate">{h.City}</p>
-                          <p className="text-[10px] text-cs-muted">{h.Latitude?.toFixed(3)}, {h.Longitude?.toFixed(3)}</p>
+                          <p className="text-[10px] text-cs-muted">{formatCoord(h.Latitude, 3)}, {formatCoord(h.Longitude, 3)}</p>
                         </div>
                       </div>
                     ))}
@@ -1606,7 +1618,7 @@ export default function App() {
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-cs-muted font-semibold">Climate Pathogen Threat</span>
                         <span className={`font-bold px-2 py-0.5 rounded ${weather.risk_pct > 65 ? 'bg-red-500/10 text-red-400' : 'bg-cs-mint/10 text-cs-mint'}`}>
-                          {weather.risk_pct.toFixed(0)}%
+                          {formatNum(weather.risk_pct, 0)}%
                         </span>
                       </div>
                       
@@ -1668,7 +1680,7 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <p className="text-center text-cs-muted text-sm animate-pulse">Telemetry coords loading...</p>
+              <p className="text-center text-cs-muted text-sm animate-pulse">Coordinates telemetry loading...</p>
             )}
           </div>
         )}
@@ -1821,7 +1833,7 @@ export default function App() {
                             </span>
                           </td>
                           <td className="p-3 text-cs-muted">
-                            {item.City || 'GPS Location'} ({item.Latitude?.toFixed(2)}, {item.Longitude?.toFixed(2)})
+                            {item.City || 'GPS Location'} ({formatCoord(item.Latitude, 2)}, {formatCoord(item.Longitude, 2)})
                           </td>
                           <td className="p-3 text-right">
                             {deletingIndex === idx ? (
