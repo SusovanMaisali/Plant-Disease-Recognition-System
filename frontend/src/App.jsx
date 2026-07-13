@@ -1,27 +1,55 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Leaf, User, Mail, Phone, Lock, Eye, LogOut, Upload, Camera, 
+  Leaf, User, Mail, Phone, Lock, LogOut, Upload, Camera, 
   MapPin, CloudSun, AlertTriangle, MessageSquare, Play, Square,
   Download, Trash2, Globe, Settings, ShieldCheck, ChevronRight,
-  TrendingUp, Sparkles, Languages, Check, RefreshCw, Send, Mic,
-  Sun, Moon, HelpCircle, FileText, Info, Calendar, Clock, BarChart2,
-  ExternalLink, CheckCircle
+  TrendingUp, Sparkles, Send, Mic, Sun, Moon, FileText, CheckCircle,
+  BarChart2, HelpCircle, Thermometer, Droplets, CloudRain, Wind, 
+  Compass, Gauge, Eye, Sunrise, Sunset, Activity
 } from 'lucide-react';
 
 const SUPPORTED_LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'hi', name: 'Hindi (हिन्दी)' },
-  { code: 'bn', name: 'Bengali (বাংলা)' },
-  { code: 'te', name: 'Telugu (తెలుగు)' },
-  { code: 'mr', name: 'Marathi (मराठी)' },
-  { code: 'ta', name: 'Tamil (தமிழ்)' },
-  { code: 'ur', name: 'Urdu (اردو)' },
-  { code: 'gu', name: 'Gujarati (ગુજરાતી)' },
-  { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
-  { code: 'ml', name: 'Malayalam (മലയാളം)' },
-  { code: 'pb', name: 'Punjabi (ਪੰਜਾਬੀ)' },
-  { code: 'es', name: 'Spanish (Español)' },
-  { code: 'fr', name: 'French (Français)' }
+  { code: 'en', flag: '🇬🇧', name: 'English' },
+  { code: 'hi', flag: '🇮🇳', name: 'Hindi (हिन्दी)' },
+  { code: 'bn', flag: '🇮🇳', name: 'Bengali (বাংলা)' },
+  { code: 'es', flag: '🇪🇸', name: 'Spanish (Español)' },
+  { code: 'fr', flag: '🇫🇷', name: 'French (Français)' },
+  { code: 'de', flag: '🇩🇪', name: 'German (Deutsch)' },
+  { code: 'it', flag: '🇮🇹', name: 'Italian (Italiano)' },
+  { code: 'pt', flag: '🇵🇹', name: 'Portuguese (Português)' },
+  { code: 'ru', flag: '🇷🇺', name: 'Russian (Русский)' },
+  { code: 'zh-CN', flag: '🇨🇳', name: 'Chinese (简体中文)' },
+  { code: 'ja', flag: '🇯🇵', name: 'Japanese (日本語)' },
+  { code: 'ko', flag: '🇰🇷', name: 'Korean (한국어)' },
+  { code: 'ar', flag: '🇸🇦', name: 'Arabic (العربية)' },
+  { code: 'tr', flag: '🇹🇷', name: 'Turkish (Türkçe)' },
+  { code: 'nl', flag: '🇳🇱', name: 'Dutch (Nederlands)' },
+  { code: 'sv', flag: '🇸🇪', name: 'Swedish (Svenska)' },
+  { code: 'no', flag: '🇳🇴', name: 'Norwegian (Norsk)' },
+  { code: 'da', flag: '🇩🇰', name: 'Danish (Dansk)' },
+  { code: 'pl', flag: '🇵🇱', name: 'Polish (Polski)' },
+  { code: 'uk', flag: '🇺🇦', name: 'Ukrainian (Українська)' },
+  { code: 'el', flag: '🇬🇷', name: 'Greek (Ελληνικά)' },
+  { code: 'th', flag: '🇹🇭', name: 'Thai (ไทย)' },
+  { code: 'vi', flag: '🇻🇳', name: 'Vietnamese (Tiếng Việt)' },
+  { code: 'id', flag: '🇮🇩', name: 'Indonesian (Bahasa Indonesia)' },
+  { code: 'ms', flag: '🇲🇾', name: 'Malay (Bahasa Melayu)' },
+  { code: 'tl', flag: '🇵🇭', name: 'Filipino (Tagalog)' },
+  { code: 'fa', flag: '🇮🇷', name: 'Persian (فارسی)' },
+  { code: 'ur', flag: '🇵🇰', name: 'Urdu (اردو)' },
+  { code: 'ta', flag: '🇮🇳', name: 'Tamil (தமிழ்)' },
+  { code: 'te', flag: '🇮🇳', name: 'Telugu (తెలుగు)' },
+  { code: 'kn', flag: '🇮🇳', name: 'Kannada (ಕನ್ನಡ)' },
+  { code: 'ml', flag: '🇮🇳', name: 'Malayalam (മലയാളം)' },
+  { code: 'gu', flag: '🇮🇳', name: 'Gujarati (ગુજરાતી)' },
+  { code: 'mr', flag: '🇮🇳', name: 'Marathi (मराठी)' },
+  { code: 'pa', flag: '🇮🇳', name: 'Punjabi (ਪੰਜਾਬੀ)' },
+  { code: 'ro', flag: '🇷🇴', name: 'Romanian (Română)' },
+  { code: 'hu', flag: '🇭🇺', name: 'Hungarian (Magyar)' },
+  { code: 'cs', flag: '🇨🇿', name: 'Czech (Čeština)' },
+  { code: 'ne', flag: '🇳🇵', name: 'Nepali (नेपाली)' },
+  { code: 'si', flag: '🇱🇰', name: 'Sinhala (සිංහල)' },
+  { code: 'sw', flag: '🇰🇪', name: 'Swahili (Kiswahili)' }
 ];
 
 export default function App() {
@@ -36,7 +64,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [activeTab, setActiveTab] = useState('diagnostics'); // diagnostics, analytics, climate, history, settings, profile
+  const [activeTab, setActiveTab] = useState('diagnostics'); 
   const [isLogin, setIsLogin] = useState(true);
   const [authForm, setAuthForm] = useState({ name: '', mobile: '', email: '', captcha: '', otp: '' });
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, sum: 0 });
@@ -57,7 +85,6 @@ export default function App() {
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [locationQuery, setLocationQuery] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const [searchingLocation, setSearchingLocation] = useState(false);
 
   // Diagnostic states
   const [selectedFile, setSelectedFile] = useState(null);
@@ -99,6 +126,11 @@ export default function App() {
   // Apply Theme class
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [darkMode]);
 
   // Load CAPTCHA
@@ -640,21 +672,18 @@ export default function App() {
   const getAnalyticsData = () => {
     if (history.length === 0) return null;
 
-    // 1. Trend scans count
     const trend = {};
     history.forEach(item => {
       trend[item.Date] = (trend[item.Date] || 0) + 1;
     });
     const trendData = Object.entries(trend).map(([date, count]) => ({ date, count }));
     
-    // 2. Crop pie distribution
     const crops = {};
     history.forEach(item => {
       crops[item.Plant] = (crops[item.Plant] || 0) + 1;
     });
     const cropData = Object.entries(crops).map(([name, count]) => ({ name, count }));
 
-    // 3. Prevalence of disease bar
     const diseases = {};
     history.forEach(item => {
       diseases[item.Disease] = (diseases[item.Disease] || 0) + 1;
@@ -664,7 +693,6 @@ export default function App() {
       .sort((a,b) => b.count - a.count)
       .slice(0, 5);
 
-    // 4. Severity counts
     const severityMap = { Excellent: 0, Mild: 0, Moderate: 0, Severe: 0 };
     history.forEach(item => {
       if (item.Severity in severityMap) {
@@ -922,7 +950,7 @@ export default function App() {
         <div className="space-y-8">
           {/* Brand Header */}
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl border transition ${darkMode ? 'bg-cs-mint/15 border-cs-mint/45 text-cs-mint' : 'bg-emerald-50 border-emerald-350 text-emerald-600'}`}>
+            <div className={`p-2.5 rounded-xl border transition ${darkMode ? 'bg-cs-mint/15 border-cs-mint/45 text-cs-mint' : 'bg-emerald-50 border-emerald-300 text-emerald-600'}`}>
               <Leaf size={24} />
             </div>
             <div>
@@ -1346,7 +1374,6 @@ export default function App() {
           <div className="space-y-6 animate-fade-in">
             {stats ? (
               <>
-                {/* Analytics Upper Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
                   {/* Daily Scan activity */}
@@ -1398,7 +1425,6 @@ export default function App() {
 
                 </div>
 
-                {/* Analytics Lower Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
                   {/* Infection prevalence */}
@@ -1444,6 +1470,22 @@ export default function App() {
                     </div>
                   </div>
 
+                </div>
+
+                {/* Geographical Map listing */}
+                <div className={`p-6 rounded-2xl space-y-4 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                  <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>🗺️ Geographical Scan Coordinates</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {history.filter(h => h.Latitude !== 0.0 && h.Latitude !== "").slice(0, 8).map((h, i) => (
+                      <div key={i} className={`p-3.5 rounded-xl border text-xs flex items-center gap-2.5 ${darkMode ? 'bg-cs-cardlight border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <MapPin size={16} className={darkMode ? 'text-cs-mint' : 'text-emerald-600'} />
+                        <div>
+                          <p className="font-bold truncate">{h.City}</p>
+                          <p className="text-[10px] text-cs-muted">{h.Latitude?.toFixed(3)}, {h.Longitude?.toFixed(3)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : (
@@ -1501,72 +1543,132 @@ export default function App() {
 
             {/* Detailed Weather Stats */}
             {weather ? (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Metrics Card */}
-                <div className={`p-6 rounded-2xl space-y-6 lg:col-span-2 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                  <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>🌡️ Micro-Climate Variables</h3>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
-                      <span className="text-cs-muted text-[10px] block mb-1">Temperature</span>
-                      <span className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.temperature}°C</span>
-                    </div>
-                    <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
-                      <span className="text-cs-muted text-[10px] block mb-1">Precipitation</span>
-                      <span className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.precipitation || 0.0}mm</span>
-                    </div>
-                    <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
-                      <span className="text-cs-muted text-[10px] block mb-1">Wind Speed</span>
-                      <span className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.wind_speed}km/h</span>
-                    </div>
-                    <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
-                      <span className="text-cs-muted text-[10px] block mb-1">Humidity</span>
-                      <span className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.humidity}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Risk and warnings */}
-                <div className={`p-6 rounded-2xl space-y-4 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                  <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>🛡️ Agro-Climate Risk Advisory</h3>
-                  
-                  <div className="space-y-3.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-cs-muted font-semibold">Climate Fungal Risk</span>
-                      <span className={`font-bold px-2 py-0.5 rounded ${weather.risk_pct > 65 ? 'bg-red-500/10 text-red-400' : 'bg-cs-mint/10 text-cs-mint'}`}>
-                        {weather.risk_pct.toFixed(0)}%
-                      </span>
-                    </div>
+                  {/* Metrics Card */}
+                  <div className={`p-6 rounded-2xl space-y-6 lg:col-span-2 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                    <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>🌡️ Micro-Climate Variables</h3>
                     
-                    <div className="w-full bg-cs-cardlight h-2 rounded-full overflow-hidden border border-cs-border">
-                      <div 
-                        className={`h-full rounded-full ${weather.risk_pct > 65 ? 'bg-red-500' : 'bg-cs-mint'}`}
-                        style={{ width: `${weather.risk_pct}%` }}
-                      ></div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Thermometer size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Temperature</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.temperature}°C</span>
+                        <span className="text-[9px] text-cs-muted block">Feels like: {weather.weather.feels_like}°C</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <CloudRain size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Precipitation</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.precipitation || 0.0} mm</span>
+                        <span className="text-[9px] text-cs-muted block">Chance of Rain: {weather.weather.chance_of_rain}%</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Wind size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Wind Speed</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.wind_speed} km/h</span>
+                        <span className="text-[9px] text-cs-muted block">Direction: {weather.weather.wind_direction}°</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Droplets size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Humidity</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.humidity}%</span>
+                        <span className="text-[9px] text-cs-muted block">Pressure: {weather.weather.pressure} hPa</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Compass size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">UV Index</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.uv_index || 0.0}</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Activity size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">US Air Quality</span>
+                        <span className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.aqi || 50} AQI</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Sunrise size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Sunrise</span>
+                        <span className={`text-sm font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.sunrise}</span>
+                      </div>
+                      <div className={`p-4 rounded-xl border text-center ${darkMode ? 'bg-cs-cardlight/60 border-cs-border' : 'bg-slate-50 border-slate-100'}`}>
+                        <Sunset size={20} className="mx-auto text-cs-mint mb-1" />
+                        <span className="text-cs-muted text-[10px] block mb-1">Sunset</span>
+                        <span className={`text-sm font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{weather.weather.sunset}</span>
+                      </div>
                     </div>
-
-                    {weather.alerts && weather.alerts.length > 0 ? (
-                      <div className="space-y-2 pt-2">
-                        {weather.alerts.map((a, i) => (
-                          <div key={i} className="p-3 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs flex items-start gap-2">
-                            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                            <span>{a}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-lg bg-cs-mint/10 border border-cs-mint/20 text-cs-mint text-[11px] flex items-center gap-2">
-                        <CheckCircle size={14} className="shrink-0" />
-                        <span>No severe environment stress warnings for crops.</span>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Risk and warnings */}
+                  <div className={`p-6 rounded-2xl space-y-4 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                    <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>Advisory Risk Metrics</h3>
+                    
+                    <div className="space-y-3.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-cs-muted font-semibold">Climate Pathogen Threat</span>
+                        <span className={`font-bold px-2 py-0.5 rounded ${weather.risk_pct > 65 ? 'bg-red-500/10 text-red-400' : 'bg-cs-mint/10 text-cs-mint'}`}>
+                          {weather.risk_pct.toFixed(0)}%
+                        </span>
+                      </div>
+                      
+                      <div className="w-full bg-cs-cardlight h-2 rounded-full overflow-hidden border border-cs-border">
+                        <div 
+                          className={`h-full rounded-full ${weather.risk_pct > 65 ? 'bg-red-500' : 'bg-cs-mint'}`}
+                          style={{ width: `${weather.risk_pct}%` }}
+                        ></div>
+                      </div>
+
+                      {weather.alerts && weather.alerts.length > 0 ? (
+                        <div className="space-y-2 pt-2">
+                          {weather.alerts.map((a, i) => (
+                            <div key={i} className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-start gap-2">
+                              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                              <span>{a}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-lg bg-cs-mint/10 border border-cs-mint/20 text-cs-mint text-[11px] flex items-center gap-2">
+                          <CheckCircle size={14} className="shrink-0" />
+                          <span>No severe environment stress warnings for crops.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
 
+                {/* Agricultural Advisories */}
+                {weather.agri && (
+                  <div className={`p-6 rounded-2xl space-y-4 ${darkMode ? 'glass-panel' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                    <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>🌾 Crop Management Advisory Recommendations</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className={`p-4 rounded-xl border space-y-1 ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <span className="text-[10px] text-cs-muted uppercase font-bold tracking-wider">Suitable Season Crops</span>
+                        <p className="text-sm font-semibold">{weather.agri.suitable_crops}</p>
+                      </div>
+                      <div className={`p-4 rounded-xl border space-y-1 ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <span className="text-[10px] text-cs-muted uppercase font-bold tracking-wider">Irrigation Scheduling</span>
+                        <p className="text-sm font-semibold">{weather.agri.irrigation}</p>
+                      </div>
+                      <div className={`p-4 rounded-xl border space-y-1 ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <span className="text-[10px] text-cs-muted uppercase font-bold tracking-wider">Fertilizer Suggestions</span>
+                        <p className="text-sm font-semibold">{weather.agri.fertilizer}</p>
+                      </div>
+                      <div className={`p-4 rounded-xl border space-y-1 ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <span className="text-[10px] text-cs-muted uppercase font-bold tracking-wider">Chemical Spray Timing</span>
+                        <p className="text-sm font-semibold">{weather.agri.spray_time}</p>
+                      </div>
+                      <div className={`p-4 rounded-xl border space-y-1 md:col-span-2 ${darkMode ? 'bg-cs-cardlight/50 border-cs-border' : 'bg-slate-50 border-slate-100 text-slate-800'}`}>
+                        <span className="text-[10px] text-cs-muted uppercase font-bold tracking-wider">Seasonal stress warning</span>
+                        <p className="text-sm font-semibold text-cs-muted">{weather.agri.seasonal_risk}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-center text-cs-muted text-sm">Coordinates telemetry not queried.</p>
+              <p className="text-center text-cs-muted text-sm animate-pulse">Telemetry coords loading...</p>
             )}
           </div>
         )}
@@ -1829,6 +1931,23 @@ export default function App() {
                     className="w-4.5 h-4.5 rounded text-cs-mint focus:ring-0 accent-cs-mint"
                   />
                 </label>
+              </div>
+
+              {/* Languages Selection */}
+              <div className="space-y-2 border-b border-cs-border pb-4">
+                <span className="text-[10px] font-bold text-cs-muted uppercase flex items-center gap-1">
+                  <Globe size={12} className="text-cs-mint" />
+                  <span>Telemetry translation language</span>
+                </span>
+                <select 
+                  className={`w-full py-2 px-3 rounded-lg border text-xs focus:outline-none transition ${darkMode ? 'bg-cs-cardlight border-cs-border text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                  value={lang}
+                  onChange={(e) => setLang(e.target.value)}
+                >
+                  {SUPPORTED_LANGUAGES.map(sl => (
+                    <option key={sl.code} value={sl.code}>{sl.flag} {sl.name}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Theme Settings */}

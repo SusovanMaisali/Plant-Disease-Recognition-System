@@ -4,7 +4,14 @@ import json
 import re
 import random
 import logging
+import tempfile
+import smtplib
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
 import numpy as np
 import pandas as pd
 import cv2
@@ -17,6 +24,8 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+import tensorflow as tf
+import google.generativeai as genai
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -36,8 +45,6 @@ app.add_middleware(
 # ═══════════════════════════════════════════════════
 # CNN MODEL INITIALIZATION & KERAS 3 PATCH
 # ═══════════════════════════════════════════════════
-import tensorflow as tf
-
 def apply_keras_patch():
     try:
         if hasattr(tf.keras.layers.InputLayer, 'from_config'):
@@ -99,8 +106,6 @@ get_class_names()
 # ═══════════════════════════════════════════════════
 # GEMINI GENERATIVE AI CLIENT
 # ═══════════════════════════════════════════════════
-import google.generativeai as genai
-
 def get_gemini_client():
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
@@ -158,15 +163,12 @@ def send_otp(data: dict):
     # Simulate OTP generation
     otp = str(random.randint(1000, 9999))
     logger.info(f"Simulated OTP for {mobile}: {otp}")
-    # In a real SaaS, we would send an SMS here. We return it for simulation.
     return {"message": "OTP sent successfully.", "otp": otp}
 
 @app.post("/api/auth/verify-otp")
 def verify_otp(data: dict):
     mobile = data.get("mobile", "").strip()
     otp = data.get("otp", "").strip()
-    # In this simulated SaaS, we accept any 4 digit OTP or we check the generated one.
-    # For user convenience, we allow any OTP but require the input.
     if not mobile or not otp:
         raise HTTPException(status_code=400, detail="Mobile number and OTP are required.")
     
@@ -216,15 +218,15 @@ def signup(data: dict):
 # CLIMATE & GEOLOCATION ENDPOINTS
 # ═══════════════════════════════════════════════════
 try:
-    from utils.weather_locator import get_ip_location, get_weather_data, calculate_disease_risk, generate_weather_alerts, reverse_geocode, get_location_suggestions
+    from utils.weather_locator import get_ip_location, get_weather_data, calculate_disease_risk, generate_weather_alerts, reverse_geocode, get_location_suggestions, get_agri_info
 except ImportError:
-    # Fallback placeholders in case of loading issues
-    def get_ip_location(): return {"latitude": 0.0, "longitude": 0.0, "city": "Unknown", "status": "failed"}
+    def get_ip_location(): return {"latitude": 22.5726, "longitude": 88.3639, "city": "Kolkata", "status": "failed"}
     def get_weather_data(lat, lon): return {"temperature": 25.0, "humidity": 60, "precipitation": 0.0, "wind_speed": 10.0, "uv_index": 3.0, "status": "failed"}
-    def calculate_disease_risk(w): return 15.0
+    def calculate_disease_risk(temperature, humidity): return {"level": "Low", "color": "#10b981", "fungal_risk": "Low", "mildew_risk": "Low", "description": ""}
     def generate_weather_alerts(w): return []
-    def reverse_geocode(lat, lon): return {"city": "Unknown", "status": "failed"}
+    def reverse_geocode(lat, lon): return {"city": "Unknown City", "status": "failed"}
     def get_location_suggestions(q): return []
+    def get_agri_info(temp, humidity, rain, uv): return {}
 
 @app.get("/api/weather")
 def get_weather(lat: float = None, lon: float = None):
@@ -240,24 +242,40 @@ def get_weather(lat: float = None, lon: float = None):
             "status": "success"
         }
     else:
-        # Geolocation from IP
         location_data = get_ip_location()
-        lat = location_data.get("latitude", 0.0)
-        lon = location_data.get("longitude", 0.0)
+        lat = location_data.get("latitude", 22.5726)
+        lon = location_data.get("longitude", 88.3639)
 
     weather_data = get_weather_data(lat, lon)
-    risk_pct = calculate_disease_risk(weather_data)
+    
+    # Correct positional signature parameters pass
+    temp = weather_data.get("temperature", 25.0)
+    humidity = weather_data.get("humidity", 60)
+    rain = weather_data.get("precipitation", 0.0)
+    uv = weather_data.get("uv_index", 3.0)
+    
+    risk_info = calculate_disease_risk(temp, humidity)
+    agri_info = get_agri_info(temp, humidity, rain, uv)
     alerts = generate_weather_alerts(weather_data)
+    
+    # Calculate integer percentage representation for visual UI bar charts
+    risk_pct = 15.0
+    if risk_info.get("level") == "High":
+        risk_pct = 85.0
+    elif risk_info.get("level") == "Moderate":
+        risk_pct = 50.0
 
     return {
         "location": location_data,
         "weather": weather_data,
         "risk_pct": risk_pct,
+        "risk_info": risk_info,
+        "agri": agri_info,
         "alerts": alerts
     }
 
 @app.get("/api/weather/suggest")
-def get_weather_suggestions(query: str):
+def get_weather_suggestions_endpoint(query: str):
     return {"suggestions": get_location_suggestions(query)}
 
 # ═══════════════════════════════════════════════════
@@ -300,12 +318,10 @@ def local_imagenet_validate(img: np.ndarray) -> tuple[bool, str, bool]:
             class_name_lower = item[1].lower().replace("_", " ")
             prob = float(item[2])
             
-            # Check plant keywords
             for pk in plant_keywords:
                 if pk in class_name_lower and prob > 0.05:
                     is_plant = True
             
-            # Check non-plant keywords
             for npk in non_plant_keywords:
                 if npk in class_name_lower:
                     if prob > 0.15 or class_name_lower == top_name.replace("_", " "):
@@ -345,11 +361,19 @@ def validate_image_pipeline(img: np.ndarray) -> tuple[bool, str]:
         if not is_leaf_local:
             return False, invalid_msg
             
-        # Haar face detection
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(45, 45))
-        if len(faces) > 0 and not is_plant:
-            return False, invalid_msg
+        # Haar face detection (safe try-catch wrapper)
+        try:
+            xml_path = os.path.join(cv2.data.haarcascades, 'haarcascade_frontalface_default.xml')
+            if os.path.exists(xml_path):
+                face_cascade = cv2.CascadeClassifier(xml_path)
+                if not face_cascade.empty():
+                    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(45, 45))
+                    if len(faces) > 0 and not is_plant:
+                        return False, invalid_msg
+            else:
+                logger.warning(f"Haar cascade XML not found at {xml_path}. Skipping face check.")
+        except Exception as e:
+            logger.warning(f"Haar face check failed (skipping): {e}")
             
         return True, "Valid Leaf Image"
     except Exception:
@@ -511,8 +535,6 @@ def load_and_migrate_history(csv_path: str) -> pd.DataFrame:
 # ═══════════════════════════════════════════════════
 # MAIN DIAGNOSIS ENDPOINT
 # ═══════════════════════════════════════════════════
-import base64
-
 @app.post("/api/diagnose")
 async def diagnose(
     file: UploadFile = File(...),
@@ -554,8 +576,8 @@ async def diagnose(
     if weather_info is None:
         try:
             ip_loc = get_ip_location()
-            latitude = ip_loc.get("latitude", 0.0)
-            longitude = ip_loc.get("longitude", 0.0)
+            latitude = ip_loc.get("latitude", 22.5726)
+            longitude = ip_loc.get("longitude", 88.3639)
             city = ip_loc.get("city", "IP Location")
             country = ip_loc.get("country", "Unknown")
             weather_info = get_weather_data(latitude, longitude)
@@ -582,7 +604,6 @@ async def diagnose(
             cnn_confidence = float(prediction[top_idx] * 100)
             cnn_disease = labels[top_idx]
             
-            # Format top 3
             top_3_indices = np.argsort(prediction)[-3:][::-1]
             for idx in top_3_indices:
                 top_3.append({
@@ -602,15 +623,12 @@ async def diagnose(
     # 5. Gemini / Offline DB analysis
     gemini_data = {}
     if use_gemini:
-        # Call Gemini Vision
         gemini_data = gemini_analyze_leaf(contents, cnn_disease, cnn_confidence)
         if "error" in gemini_data:
-            # Fallback to offline DB
             if cnn_disease in OFFLINE_DB:
                 gemini_data = dict(OFFLINE_DB[cnn_disease])
                 gemini_data["error"] = "Gemini Vision offline. Loaded offline profile."
     else:
-        # Strictly Offline DB
         if cnn_disease in OFFLINE_DB:
             gemini_data = dict(OFFLINE_DB[cnn_disease])
         else:
@@ -620,7 +638,6 @@ async def diagnose(
                 "treatment": "No offline profile available. Connect to internet for Gemini advisory."
             }
 
-    # Standardize result severity
     severity = gemini_data.get("severity", "Moderate")
 
     # 6. Save to Registry
@@ -652,7 +669,6 @@ async def diagnose(
     history_df = pd.concat([history_df, pd.DataFrame([new_entry])], ignore_index=True)
     history_df.to_csv(csv_path, index=False)
 
-    # Encode original image to b64 for display
     _, orig_buffer = cv2.imencode('.jpg', cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
     orig_b64 = base64.b64encode(orig_buffer).decode('utf-8')
 
@@ -680,7 +696,7 @@ async def diagnose(
 @app.post("/api/chat")
 def chat_bot(data: dict):
     message = data.get("message", "")
-    history = data.get("history", []) # Expecting list of {"role": "user" / "model", "text": "..."}
+    history = data.get("history", [])
     
     gemini_model, err = get_gemini_client()
     if gemini_model is None:
@@ -708,7 +724,6 @@ def chat_bot(data: dict):
 def get_history(mobile: str):
     csv_path = os.path.join(HISTORY_DIR, f"predictions_{mobile}.csv")
     history_df = load_and_migrate_history(csv_path)
-    # Return reversed order to show latest first
     records = history_df.to_dict(orient="records")
     records.reverse()
     return {"history": records}
@@ -727,7 +742,6 @@ def delete_history_item(data: dict):
         raise HTTPException(status_code=404, detail="History log not found.")
         
     history_df = pd.read_csv(csv_path)
-    # Filter out target item
     filtered_df = history_df[~((history_df["Date"] == date) & (history_df["Time"] == time))]
     filtered_df.to_csv(csv_path, index=False)
     
@@ -764,7 +778,6 @@ def generate_tts_endpoint(data: dict):
         raise HTTPException(status_code=400, detail="Text is required.")
         
     try:
-        # Strip HTML tags
         clean_text = re.sub(r'<[^>]+>', '', str(text)).strip()
         tts = gTTS(clean_text, lang=lang)
         
@@ -798,7 +811,7 @@ def generate_pdf_endpoint(data: dict):
     gemini_data = data.get("diagnosis", {})
     location = data.get("location", {})
     weather = data.get("weather", {})
-    original_image_b64 = data.get("original_image", "") # optional base64 image
+    original_image_b64 = data.get("original_image", "")
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -858,7 +871,6 @@ def generate_pdf_endpoint(data: dict):
     story.append(t)
     story.append(Spacer(1, 15))
 
-    # Add Image if provided
     if original_image_b64:
         try:
             from reportlab.platypus import Image as RLImage
@@ -867,7 +879,6 @@ def generate_pdf_endpoint(data: dict):
             temp_img.write(img_data)
             temp_img.close()
             
-            # Read size and rescale
             rlimg = RLImage(temp_img.name, width=2.8*inch, height=2.1*inch)
             story.append(Paragraph("📷 Captured Leaf Specimen", lbl_style))
             story.append(rlimg)
@@ -904,13 +915,9 @@ def generate_pdf_endpoint(data: dict):
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": "attachment;filename=diagnosis_report.pdf"})
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-import tempfile
-
+# ═══════════════════════════════════════════════════
+# EMAIL HISTORY REPORT ENDPOINT
+# ═══════════════════════════════════════════════════
 @app.post("/api/history/email")
 def email_history_report(data: dict):
     mobile = data.get("mobile", "").strip()
@@ -932,12 +939,10 @@ def email_history_report(data: dict):
     if df.empty:
         raise HTTPException(status_code=400, detail="Prediction history is empty.")
 
-    # 1. Create CSV content
     csv_buffer = io.StringIO()
     df.to_csv(csv_buffer, index=False)
     csv_data = csv_buffer.getvalue()
     
-    # 2. Build email
     msg = MIMEMultipart()
     smtp_server = os.environ.get("SMTP_SERVER", "")
     smtp_port = os.environ.get("SMTP_PORT", "587")
@@ -964,14 +969,12 @@ CropSense AI Team
 """
     msg.attach(MIMEText(body, 'plain'))
     
-    # Attachment
     attachment = MIMEBase('application', 'octet-stream')
     attachment.set_payload(csv_data.encode('utf-8'))
     encoders.encode_base64(attachment)
     attachment.add_header('Content-Disposition', 'attachment', filename='crop_prediction_history.csv')
     msg.attach(attachment)
     
-    # 3. Send
     if not smtp_server or not smtp_user or not smtp_password:
         return {"status": "success", "message": "Simulation Mode: Email successfully compiled! (To enable real emails, configure your SMTP environment variables on Render)."}
         
