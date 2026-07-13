@@ -904,6 +904,92 @@ def generate_pdf_endpoint(data: dict):
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/pdf", headers={"Content-Disposition": "attachment;filename=diagnosis_report.pdf"})
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import tempfile
+
+@app.post("/api/history/email")
+def email_history_report(data: dict):
+    mobile = data.get("mobile", "").strip()
+    recipient_email = data.get("email", "").strip()
+    name = data.get("name", "Farmer")
+    
+    if not mobile or not recipient_email:
+        raise HTTPException(status_code=400, detail="Mobile and Email are required.")
+        
+    csv_path = os.path.join(HISTORY_DIR, f"predictions_{mobile}.csv")
+    if not os.path.exists(csv_path):
+        raise HTTPException(status_code=404, detail="No prediction history found to send.")
+        
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to load history data.")
+        
+    if df.empty:
+        raise HTTPException(status_code=400, detail="Prediction history is empty.")
+
+    # 1. Create CSV content
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_data = csv_buffer.getvalue()
+    
+    # 2. Build email
+    msg = MIMEMultipart()
+    smtp_server = os.environ.get("SMTP_SERVER", "")
+    smtp_port = os.environ.get("SMTP_PORT", "587")
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_password = os.environ.get("SMTP_PASSWORD", "")
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user) or "reports@cropsense.ai"
+    
+    msg['From'] = smtp_from
+    msg['To'] = recipient_email
+    msg['Subject'] = "Plant Disease Prediction Report — CropSense AI"
+    
+    body = f"""Dear {name},
+
+Thank you for using CropSense AI. We have compiled your plant disease prediction history report.
+
+Summary of diagnostics:
+- Total scans: {len(df)}
+- Latest diagnosis: {df.iloc[-1]['Plant']} — {df.iloc[-1]['Disease']} ({df.iloc[-1]['Severity']})
+
+Please find the full prediction history attached as a CSV file.
+
+Best regards,
+CropSense AI Team
+"""
+    msg.attach(MIMEText(body, 'plain'))
+    
+    # Attachment
+    attachment = MIMEBase('application', 'octet-stream')
+    attachment.set_payload(csv_data.encode('utf-8'))
+    encoders.encode_base64(attachment)
+    attachment.add_header('Content-Disposition', 'attachment', filename='crop_prediction_history.csv')
+    msg.attach(attachment)
+    
+    # 3. Send
+    if not smtp_server or not smtp_user or not smtp_password:
+        return {"status": "success", "message": "Simulation Mode: Email successfully compiled! (To enable real emails, configure your SMTP environment variables on Render)."}
+        
+    try:
+        port = int(smtp_port)
+        if port == 465:
+            server = smtplib.SMTP_SSL(smtp_server, port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_server, port, timeout=10)
+            server.starttls()
+            
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_from, recipient_email, msg.as_string())
+        server.close()
+        return {"status": "success", "message": "Email report sent successfully!"}
+    except Exception as e:
+        return {"status": "partial", "message": f"SMTP Error: {str(e)} (Simulation fallback: Email compiled successfully)."}
+
 # ═══════════════════════════════════════════════════
 # STATIC FILES SERVING (PRODUCTION MODE)
 # ═══════════════════════════════════════════════════
