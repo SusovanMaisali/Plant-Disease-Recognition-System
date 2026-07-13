@@ -68,7 +68,14 @@ const getApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
   }
-  return '';
+  const saved = localStorage.getItem('CUSTOM_API_BASE');
+  if (saved) {
+    return saved.replace(/\/$/, '');
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return '';
+  }
+  return window.location.origin;
 };
 
 const API_BASE = getApiBase();
@@ -92,6 +99,20 @@ export default function App() {
   const [otpSent, setOtpSent] = useState(false);
   const [simulatedOtp, setSimulatedOtp] = useState('');
   const [authError, setAuthError] = useState('');
+  const [connError, setConnError] = useState(false);
+  const [showBaseInput, setShowBaseInput] = useState(false);
+  const [customBase, setCustomBase] = useState(localStorage.getItem('CUSTOM_API_BASE') || '');
+
+  const handleSaveCustomBase = (e) => {
+    e.preventDefault();
+    const cleanUrl = customBase.trim().replace(/\/$/, '');
+    if (cleanUrl) {
+      localStorage.setItem('CUSTOM_API_BASE', cleanUrl);
+    } else {
+      localStorage.removeItem('CUSTOM_API_BASE');
+    }
+    window.location.reload();
+  };
   
   // Dashboard Settings
   const [lang, setLang] = useState('en');
@@ -158,10 +179,13 @@ export default function App() {
   const fetchCaptcha = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/captcha`);
+      if (!res.ok) throw new Error("Status " + res.status);
       const data = await res.json();
       setCaptcha(data);
+      setConnError(false);
     } catch (e) {
       console.error(e);
+      setConnError(true);
     }
   };
 
@@ -761,6 +785,49 @@ export default function App() {
             <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-sm flex items-start gap-2.5">
               <AlertTriangle size={18} className="mt-0.5 shrink-0" />
               <span>{authError}</span>
+            </div>
+          )}
+
+          {connError && (
+            <div className="mb-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400 text-xs space-y-2 animate-fade-in">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <span>Could not connect to the API backend server.</span>
+              </div>
+              {!showBaseInput ? (
+                <button 
+                  type="button"
+                  onClick={() => setShowBaseInput(true)}
+                  className="font-bold underline hover:text-white"
+                >
+                  Configure Backend URL manually
+                </button>
+              ) : (
+                <form onSubmit={handleSaveCustomBase} className="space-y-2 pt-1.5">
+                  <input 
+                    type="text" 
+                    placeholder="e.g. https://cropsense-ai-backend.onrender.com"
+                    className="w-full px-3 py-1.5 rounded-lg border text-xs focus:outline-none bg-cs-cardlight border-cs-border text-white"
+                    value={customBase}
+                    onChange={(e) => setCustomBase(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button 
+                      type="submit" 
+                      className="px-3 py-1 rounded bg-cs-mint text-cs-bg font-bold text-[10px]"
+                    >
+                      Save & Reconnect
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowBaseInput(false)}
+                      className="px-3 py-1 rounded border border-cs-border text-cs-muted text-[10px]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
@@ -1969,6 +2036,30 @@ export default function App() {
                     <option key={sl.code} value={sl.code}>{sl.flag} {sl.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Backend API Server URL Settings */}
+              <div className="space-y-2 border-b border-cs-border pb-4">
+                <span className="text-[10px] font-bold text-cs-muted uppercase flex items-center gap-1">
+                  <Globe size={12} className="text-cs-mint" />
+                  <span>Backend API Server URL</span>
+                </span>
+                <form onSubmit={handleSaveCustomBase} className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Auto-detected (same origin)"
+                    className={`flex-1 py-2 px-3 rounded-lg border text-xs focus:outline-none transition ${darkMode ? 'bg-cs-cardlight border-cs-border text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+                    value={customBase}
+                    onChange={(e) => setCustomBase(e.target.value)}
+                  />
+                  <button 
+                    type="submit"
+                    className="py-2 px-4 rounded-lg bg-cs-mint text-cs-bg font-bold text-xs"
+                  >
+                    Save
+                  </button>
+                </form>
+                <p className="text-[9px] text-cs-muted">Configure this only if your frontend and backend run on different domains.</p>
               </div>
 
               {/* Theme Settings */}
